@@ -1,0 +1,6 @@
+*.user
+*.pro.user*
+*~
+*.orig
+*.kdev4
+build

@@ -1,0 +1,5 @@
+add_executable(wamp_test_all all.cpp)
+add_dependencies(wamp_test_all wamp2)
+target_link_libraries(wamp_test_all wamp2)
+add_test(wamp.test.all test_all)
+set_property(TARGET wamp_test_all PROPERTY CXX_STANDARD 14)
