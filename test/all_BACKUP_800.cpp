@@ -15,6 +15,8 @@ int main()
     std::vector<msgpack::object> arr = adapters::as<std::vector<msgpack::object>>(des);
     std::string s = adapters::as<std::string>(arr[0]);
     assert(s == std::string("ahoj"));
+<<<<<<< HEAD
+=======
 
 
     qflow::client c;
@@ -30,4 +32,5 @@ int main()
         }
     });
     c.run();
+>>>>>>> 0c70a73c6c4b8efd66113cd9db43958c67d0bb49
 }

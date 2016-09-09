@@ -23,7 +23,7 @@ const std::string KEY_ERR_NO_SUCH_REGISTRATION = "wamp.error.no_such_registratio
 const std::string KEY_ERR_NO_SUCH_SUBSCRIPTION = "wamp.error.no_such_subscription";
 const std::string KEY_ERR_NO_SUCH_REALM = "wamp.error.no_such_realm";
 const std::string KEY_WAMP_JSON_SUB = "wamp.2.json";
-const std::string KEY_WAMP_MSGPACK_SUB = "wamp.2.msgpack";
+static constexpr const char* KEY_WAMP_MSGPACK_SUB = "wamp.2.msgpack";
 
 enum WampMsgCode : int {
     HELLO = 1,

@@ -81,7 +81,7 @@ public:
 class msgpack_serializer
 {
 public:
-    const std::string KEY = KEY_WAMP_MSGPACK_SUB;
+    static constexpr const char* KEY = KEY_WAMP_MSGPACK_SUB;
     using variant_type = msgpack::object;
     msgpack_serializer()
     {
@@ -103,59 +103,73 @@ public:
 };
 
 
-
+enum SESSION_STATE : int {
+    OPENED = 1,
+    CLOSED = -1
+};
 template<typename transport_connection_type, typename serializer>
 class session
 {
-
+public:
+    SESSION_STATE state() const;
+private:
+    SESSION_STATE _state;
 };
+
 template<typename serializer>
 class session<client::connection_ptr, serializer>
 {
 public:
-    using type = session<client::connection_ptr, serializer>;
-    client::connection_ptr con;
-    processor<serializer> proc;
-    void on_open(websocketpp::connection_hdl /*hdl*/)
+    session<client::connection_ptr, serializer>(client::connection_ptr con, SESSION_STATE state = SESSION_STATE::OPENED) : _con(con), _state(state)
     {
-    }
-    bool on_validate(websocketpp::connection_hdl hdl)
-    {
-        return true;
-    }
 
+    }
+    SESSION_STATE state() const
+    {
+        return _state;
+    }
+    using type = session<client::connection_ptr, serializer>;
+    using ptr = std::shared_ptr<type>;
+private:
+    SESSION_STATE _state;
+    client::connection_ptr _con;
+    processor<serializer> proc;
     void on_message(websocketpp::connection_hdl hdl, message_ptr msg)
     {
-    }
-    void on_close(websocketpp::connection_hdl /*hdl*/)
-    {
-    }
-    void on_fail(websocketpp::connection_hdl /*hdl*/)
-    {
+        int t=0;
     }
     void connect_handlers()
     {
-        con->set_message_handler(bind(&type::on_message,this,::_1,::_2));
-        con->set_close_handler(bind(&type::on_close,this,::_1));
-        con->set_open_handler(bind(&type::on_open,this,::_1));
-        con->set_fail_handler(bind(&type::on_fail,this,::_1));
-        con->set_validate_handler(bind(&type::on_validate,this,::_1));
+        _con->set_message_handler(bind(&type::on_message,this,_1,_2));
     }
 };
 
+
+
 template<typename serializer>
-qflow::future<session<client::connection_ptr, serializer>> connect(client& c, std::string uri)
+qflow::future<typename session<client::connection_ptr, serializer>::ptr> get_session(client& c, std::string uri)
 {
-    using sesion_type = session<client::connection_ptr, serializer>;
-    qflow::promise<session_type> promise;
-    auto future = promise.get_future();
-    session_type session;
-    promise.set_value(session);
+    using session_type = session<client::connection_ptr, serializer>;
+    auto promise = std::make_shared<qflow::promise<typename session_type::ptr>>();
+    auto future = promise->get_future();
     websocketpp::lib::error_code ec;
-    session.con = c.get_connection(uri, ec);
-    session.con->add_subprotocol(serializer::KEY);
-    session.connect_handlers();
-    c.connect(session.con);
+    auto con = c.get_connection(uri, ec);
+    con->add_subprotocol(serializer::KEY);
+    con->set_open_handler([con, promise](websocketpp::connection_hdl /*hdl*/){
+        auto session = std::make_shared<session_type>(con);
+        std::string protocol = con->get_subprotocol();
+        promise->set_value(session);
+    });
+    con->set_fail_handler([con, promise](websocketpp::connection_hdl /*hdl*/){
+        auto session = std::make_shared<session_type>(con, SESSION_STATE::CLOSED);
+        promise->set_value(session);
+    });
+    con->set_close_handler([con, promise](websocketpp::connection_hdl /*hdl*/){
+        auto session = std::make_shared<session_type>(con, SESSION_STATE::CLOSED);
+        promise->set_value(session);
+
+    });
+    c.connect(con);
     return future;
 }
 
