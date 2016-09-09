@@ -1,5 +1,6 @@
 #include "connection.h"
 #include <vector>
+#include <string>
 #include <iostream>
 #include <cassert>
 
@@ -14,6 +15,4 @@ int main()
     std::vector<msgpack::object> arr = adapters::as<std::vector<msgpack::object>>(des);
     std::string s = adapters::as<std::string>(arr[0]);
     assert(s == std::string("ahoj"));
-
-    int t=0;
 }
