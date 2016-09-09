@@ -22,7 +22,7 @@ int main()
     websocketpp::lib::error_code ec;
     auto conn = c.get_connection("ws://40.217.1.146:8080", ec);
 
-    auto future = qflow::connect<qflow::msgpack_serializer>(c, "ws://40.217.1.146:8080");
+    auto future = qflow::get_session<qflow::msgpack_serializer>(c, "ws://40.217.1.146:8080");
     future.then([](auto session){
         if(session->state() == qflow::SESSION_STATE::OPENED)
         {
