@@ -25,7 +25,7 @@ const std::string KEY_ERR_NO_SUCH_REALM = "wamp.error.no_such_realm";
 const std::string KEY_WAMP_JSON_SUB = "wamp.2.json";
 static constexpr const char* KEY_WAMP_MSGPACK_SUB = "wamp.2.msgpack";
 
-enum WampMsgCode : int {
+enum class WampMsgCode : int {
     HELLO = 1,
     WELCOME = 2,
     ABORT = 3,
@@ -33,7 +33,7 @@ enum WampMsgCode : int {
     AUTHENTICATE = 5,
     GOODBYE = 6,
     HEARTBEAT = 7,
-    ERROR = 8,
+    WAMP_ERROR = 8,
     PUBLISH = 16,
     PUBLISHED = 17,
     SUBSCRIBE = 32,
@@ -45,7 +45,7 @@ enum WampMsgCode : int {
     CANCEL = 49,
     RESULT = 50,
     REGISTER = 64,
-    REGISTERED = 65,
+    WAMP_REGISTERED = 65,
     UNREGISTER = 66,
     UNREGISTERED = 67,
     INVOCATION = 68,

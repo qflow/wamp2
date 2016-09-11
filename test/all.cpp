@@ -1,6 +1,4 @@
 #include "connection.h"
-#include <vector>
-#include <string>
 #include <iostream>
 #include <cassert>
 
@@ -19,15 +17,11 @@ int main()
 
     qflow::client c;
     c.init_asio();
-    websocketpp::lib::error_code ec;
-    auto conn = c.get_connection("ws://40.217.1.146:8080", ec);
+    auto user = std::make_tuple("username", "password");
+    auto session = qflow::get_session<qflow::msgpack_serializer>(c, "ws://1234:8080", user);
+    session->connect();
 
-    auto future = qflow::get_session<qflow::msgpack_serializer>(c, "ws://40.217.1.146:8080");
-    future.then([](auto session){
-        if(session->state() == qflow::SESSION_STATE::OPENED)
-        {
-            int t=0;
-        }
-    });
+
     c.run();
+    int t=0;
 }
