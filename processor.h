@@ -3,12 +3,15 @@
 
 #include <string>
 #include <functional>
+#include <unordered_map>
+#include "util/functor.h"
 
 namespace qflow{
 template<typename serializer>
 class processor
 {
 public:
+    using functor_ptr = std::shared_ptr<functor<typename serializer::variant_type>>;
     template<typename Function>
     void set_send_callback(Function&& f)
     {
@@ -19,7 +22,14 @@ public:
         auto message = s.deserialize(str);
         message_received(message);
     }
+    template<typename T>
+    void add_registration(const std::string& uri, T&& reg)
+    {
+        auto f = new functor_impl<typename serializer::variant_type, T>(std::forward<T>(reg));
+        _registrations[uri] = functor_ptr(f);
+    }
 private:
+    std::unordered_map<std::string, functor_ptr> _registrations;
     serializer s;
     std::function<void(std::string)> _sendCallback;
     template<typename message>

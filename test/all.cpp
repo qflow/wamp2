@@ -19,6 +19,9 @@ int main()
     c.init_asio();
     auto user = std::make_tuple("username", "password");
     auto session = qflow::get_session<qflow::msgpack_serializer>(c, "ws://1234:8080", user);
+    session->add_registration("test", [](){
+        
+    });
     session->connect();
 
 

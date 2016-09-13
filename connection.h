@@ -48,6 +48,11 @@ public:
     {
         return _state;
     }
+    template<typename T>
+    void add_registration(const std::string& uri, T&& reg)
+    {
+        _proc.add_registration<T>(uri, std::forward<T>(reg));
+    }
 
 private:
     client& _c;
