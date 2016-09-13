@@ -1,17 +1,10 @@
 #include "connection.h"
 #include <iostream>
 #include <cassert>
-#include "registration.h"
 #include <functional>
 
 int main()
 {
-    //qflow::connection c;
-    auto f = [](){
-
-    };
-    qflow::registration_impl<decltype(f)> reg(std::forward<decltype(f)>(f));
-    reg.test();
 
     auto obj = std::make_tuple(std::string("ahoj"), 5);
     qflow::msgpack_serializer serializer;
