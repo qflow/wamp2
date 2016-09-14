@@ -24,6 +24,7 @@ const std::string KEY_ERR_NO_SUCH_SUBSCRIPTION = "wamp.error.no_such_subscriptio
 const std::string KEY_ERR_NO_SUCH_REALM = "wamp.error.no_such_realm";
 const std::string KEY_WAMP_JSON_SUB = "wamp.2.json";
 static constexpr const char* KEY_WAMP_MSGPACK_SUB = "wamp.2.msgpack";
+static constexpr const char* KEY_WAMPCRA = "wampcra";
 
 enum class WampMsgCode : int {
     HELLO = 1,

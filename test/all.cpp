@@ -3,10 +3,12 @@
 #include <cassert>
 #include <functional>
 
+
 int main()
 {
 
-    auto obj = std::make_tuple(std::string("ahoj"), 5);
+    auto map = std::make_tuple(std::make_pair("key", "value"));
+    auto obj = std::make_tuple(std::string("ahoj"), 5, map);
     qflow::msgpack_serializer serializer;
     std::string ss = serializer.serialize(obj);
     auto des = serializer.deserialize(ss);
@@ -17,8 +19,8 @@ int main()
 
     qflow::client c;
     c.init_asio();
-    auto user = std::make_tuple("username", "password");
-    auto session = qflow::get_session<qflow::msgpack_serializer>(c, "ws://1234:8080", user);
+    std::tuple<const char*, const char*> user = std::make_tuple("gemport", "gemport");
+    auto session = qflow::get_session<qflow::msgpack_serializer>(c, "ws://40.217.1.146:8080", "realm1", user);
     session->add_registration("test", [](){
         
     });

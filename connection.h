@@ -9,6 +9,7 @@
 #include "msgpack_serializer.h"
 #include "processor.h"
 #include "session.h"
+#include "authenticator.h"
 
 namespace qflow{
 
@@ -27,10 +28,12 @@ class session<client::connection_ptr, serializer, user>
 public:
     using type = session<client::connection_ptr, serializer, user>;
     using ptr = std::shared_ptr<type>;
-    session<client::connection_ptr, serializer, user>(client& c, const std::string uri, user& u) : _c(c),
-        _uri(uri), _user(u)
+    session<client::connection_ptr, serializer, user>(client& c, const std::string& uri, const std::string& realm, user& u) : _c(c),
+        _uri(uri)
     {
         _proc.set_send_callback(bind(&type::on_send,this,_1));
+        _proc.set_authenticator(authenticator<user>(u));
+        _proc.set_realm(realm);
     }
     ~session<client::connection_ptr, serializer, user>()
     {
@@ -40,6 +43,7 @@ public:
     {
         websocketpp::lib::error_code ec;
         _con = _c.get_connection(_uri, ec);
+        _con->add_subprotocol(serializer::KEY);
         connect_handlers();
         _c.connect(_con);
     }
@@ -51,27 +55,27 @@ public:
     template<typename T>
     void add_registration(const std::string& uri, T&& reg)
     {
-        _proc.add_registration<T>(uri, std::forward<T>(reg));
+        _proc.template add_registration<T>(uri, std::forward<T>(reg));
     }
 
 private:
     client& _c;
-    user& _user;
     std::string _uri;
     SESSION_STATE _state;
     client::connection_ptr _con;
-    processor<serializer> _proc;
-    void on_message(websocketpp::connection_hdl hdl, message_ptr msg)
+    processor<serializer, authenticator<user>> _proc;
+    void on_message(websocketpp::connection_hdl /*hdl*/, message_ptr msg)
     {
         std::string s = msg->get_payload();
         _proc.post_message(s);
     }
     void on_open(websocketpp::connection_hdl /*hdl*/)
     {
+        _proc.hello();
     }
     void on_fail(websocketpp::connection_hdl /*hdl*/)
     {
-        connect();
+        //connect();
     }
     void on_close(websocketpp::connection_hdl /*hdl*/){
 
@@ -80,9 +84,9 @@ private:
     {
         int i=0;
     }
-    void on_send(const std::string msg)
+    void on_send(const std::string& msg)
     {
-        _con->send(msg);
+        _con->send(msg, websocketpp::frame::opcode::binary);
     }
 
     void connect_handlers()
@@ -98,10 +102,10 @@ private:
 
 
 template<typename serializer, typename user>
-typename session<client::connection_ptr, serializer, user>::ptr get_session(client& c, const std::string uri, user& u)
+typename session<client::connection_ptr, serializer, user>::ptr get_session(client& c, const std::string& uri, const std::string& realm, user& u)
 {
     using session_type = session<client::connection_ptr, serializer, user>;
-    auto session_ptr = std::make_shared<session_type>(c, uri, u);
+    auto session_ptr = std::make_shared<session_type>(c, uri, realm, u);
     return session_ptr;
 }
 

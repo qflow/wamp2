@@ -2,8 +2,48 @@
 #define MSGPACK_SERIALIZER_H
 
 #include "util/adapters.h"
+#include "util/for_each_t.h"
 #include "symbols.h"
+#include <forward_list>
 #include <msgpack.hpp>
+
+template <typename T>
+struct map_traits
+{};
+
+template<typename Key, typename... Value>
+struct map_traits<std::tuple<std::pair<Key, Value>...>>
+{
+    static constexpr bool is_map = true;
+};
+
+
+namespace msgpack {
+MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
+namespace adaptor {
+template<>
+struct pack<qflow::WampMsgCode> {
+    template <typename Stream>
+    packer<Stream>& operator()(msgpack::packer<Stream>& o, qflow::WampMsgCode const& code) const {
+        o.pack(static_cast<int>(code));
+        return o;
+    }
+};
+template<typename T>
+struct pack<T, std::enable_if_t<map_traits<T>::is_map>> {
+    template <typename Stream>
+    packer<Stream>& operator()(msgpack::packer<Stream>& o, T const& map) const {
+        auto res = for_each_t(map, [](auto i, auto p){
+            int r=0;
+            return 0;
+        });
+        return o;
+    }
+};
+}
+}
+}
+
 
 
 namespace adapters
@@ -31,6 +71,14 @@ namespace adapters
         static msgpack::object convert(T t)
         {
             return msgpack::object(t);
+        }
+    };
+    template<>
+    struct adapter<msgpack::object, qflow::WampMsgCode>
+    {
+        static msgpack::object convert(qflow::WampMsgCode code)
+        {
+            return msgpack::object(static_cast<int>(code));
         }
     };
 }

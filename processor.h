@@ -4,13 +4,33 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
+#include <forward_list>
 #include "util/functor.h"
 
+
+template<typename... T>
+class tuple_map
+{
+public:
+    std::tuple<T...> t;
+};
+
 namespace qflow{
-template<typename serializer>
+template<typename serializer, typename authenticator_type>
 class processor
 {
 public:
+    processor()
+    {
+    }
+    void set_authenticator(authenticator_type&& auth)
+    {
+        _auth = std::move(auth);
+    }
+    void set_realm(const std::string& value)
+    {
+        _realm = value;
+    }
     using functor_ptr = std::shared_ptr<functor<typename serializer::variant_type>>;
     template<typename Function>
     void set_send_callback(Function&& f)
@@ -28,10 +48,23 @@ public:
         auto f = new functor_impl<typename serializer::variant_type, T>(std::forward<T>(reg));
         _registrations[uri] = functor_ptr(f);
     }
+    void hello()
+    {
+        auto auth_method = authenticator_type::KEY;
+        using var = typename serializer::variant_type;
+        using map = std::unordered_map<std::string, var>;
+        std::unordered_map<std::string, map> roles{{"publisher", map()}, {"subscriber", map()}, {"caller", map()}, {"callee", map()}};
+        std::forward_list<std::string> authmethods{{auth_method}};
+        /*map options{{"authmethods", var(authmethods)}};
+        auto msg = std::make_tuple(WampMsgCode::HELLO, _realm, options);*/
+        send(authmethods);
+    }
 private:
     std::unordered_map<std::string, functor_ptr> _registrations;
     serializer s;
+    authenticator_type _auth;
     std::function<void(std::string)> _sendCallback;
+    std::string _realm;
     template<typename message>
     void message_received(message m)
     {
