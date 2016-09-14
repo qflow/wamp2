@@ -6,7 +6,7 @@
 
 namespace qflow{
 
-template<typename T>
+template<typename T, typename Enable = void>
 class authenticator
 {
 public:
