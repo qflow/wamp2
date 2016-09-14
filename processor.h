@@ -50,14 +50,10 @@ public:
     }
     void hello()
     {
-        auto auth_method = authenticator_type::KEY;
-        using var = typename serializer::variant_type;
-        using map = std::unordered_map<std::string, var>;
-        std::unordered_map<std::string, map> roles{{"publisher", map()}, {"subscriber", map()}, {"caller", map()}, {"callee", map()}};
-        std::forward_list<std::string> authmethods{{auth_method}};
-        /*map options{{"authmethods", var(authmethods)}};
-        auto msg = std::make_tuple(WampMsgCode::HELLO, _realm, options);*/
-        send(authmethods);
+        std::forward_list<std::string> authmethods{authenticator_type::KEY};
+        auto options = std::make_tuple(std::make_pair("authmethods", authmethods));
+        auto msg = std::make_tuple(WampMsgCode::HELLO, _realm, options);
+        send(msg);
     }
 private:
     std::unordered_map<std::string, functor_ptr> _registrations;

@@ -6,7 +6,6 @@
 
 int main()
 {
-
     auto map = std::make_tuple(std::make_pair("key", "value"));
     auto obj = std::make_tuple(std::string("ahoj"), 5, map);
     qflow::msgpack_serializer serializer;
