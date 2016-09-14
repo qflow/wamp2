@@ -25,15 +25,6 @@ public:
     authenticator(user& u) : _user(u)
     {
     }
-    authenticator(const authenticator& other)  = delete;
-    authenticator(authenticator&& other) : _user(std::move(other._user))
-    {
-
-    }
-    authenticator& operator=(authenticator&& other)
-    {
-        _user = other._user;
-    }
 private:
     user _user;
 };

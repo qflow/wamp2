@@ -33,8 +33,10 @@ template<typename T>
 struct pack<T, std::enable_if_t<map_traits<T>::is_map>> {
     template <typename Stream>
     packer<Stream>& operator()(msgpack::packer<Stream>& o, T const& map) const {
-        auto res = for_each_t(map, [](auto i, auto p){
-            int r=0;
+        o.pack_map(std::tuple_size<T>::value);
+        auto res = for_each_t(map, [&o](auto i, auto p){
+            o.pack(std::get<0>(p));
+            o.pack(std::get<1>(p));
             return 0;
         });
         return o;
