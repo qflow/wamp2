@@ -8,14 +8,6 @@
 #include "util/functor.h"
 #include "symbols.h"
 
-
-template<typename... T>
-class tuple_map
-{
-public:
-    std::tuple<T...> t;
-};
-
 namespace qflow{
 template<typename serializer, typename authenticator_type>
 class processor

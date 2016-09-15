@@ -68,7 +68,12 @@ ExternalProject_Add(
     )
 set(CRYPTOPP_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/cryptopp/src/cryptopp-build/install/include)
 set(CRYPTOPP_LIB_DIRS ${PROJECT_BINARY_DIR}/cryptopp/src/cryptopp-build/install/lib)
-set(CRYPTOPP_LIBRARY ${CRYPTOPP_LIB_DIRS}/${CMAKE_STATIC_LIBRARY_PREFIX}cryptopp${CMAKE_STATIC_LIBRARY_SUFFIX})
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(CRYPTOPP_LIBRARY ${CRYPTOPP_LIB_DIRS}/${CMAKE_STATIC_LIBRARY_PREFIX}cryptopp${CMAKE_STATIC_LIBRARY_SUFFIX})
+endif()
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(CRYPTOPP_LIBRARY ${CRYPTOPP_LIB_DIRS}/${CMAKE_STATIC_LIBRARY_PREFIX}cryptopp-static${CMAKE_STATIC_LIBRARY_SUFFIX})
+endif()
 
 enable_testing()
 add_subdirectory(test)
