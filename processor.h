@@ -1,6 +1,7 @@
 #ifndef PROCESSOR_H
 #define PROCESSOR_H
 
+#include "random.h"
 #include <string>
 #include <functional>
 #include <unordered_map>
@@ -9,6 +10,7 @@
 #include "symbols.h"
 
 namespace qflow{
+
 template<typename serializer, typename authenticator_type>
 class processor
 {
@@ -40,6 +42,9 @@ public:
     {
         auto f = new functor_impl<typename serializer::variant_type, T>(std::forward<T>(reg));
         _registrations[uri] = functor_ptr(f);
+        rnd_type requestId = random::generate();
+        auto msg = std::make_tuple(WampMsgCode::REGISTER, requestId, empty_map(), uri);
+        send(msg);
     }
     void hello()
     {
@@ -49,6 +54,7 @@ public:
         send(msg);
     }
 private:
+    using empty_map = std::unordered_map<std::string, std::string>;
     std::unordered_map<std::string, functor_ptr> _registrations;
     serializer s;
     authenticator_type _auth;
