@@ -83,6 +83,14 @@ namespace adapters
             return msgpack::object(static_cast<int>(code));
         }
     };
+    template<>
+    struct adapter<qflow::WampMsgCode, msgpack::object>
+    {
+        static qflow::WampMsgCode convert(msgpack::object o)
+        {
+            return static_cast<qflow::WampMsgCode>(o.as<int>());
+        }
+    };
 }
 
 namespace qflow{

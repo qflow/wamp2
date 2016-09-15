@@ -56,6 +56,19 @@ ExternalProject_Add(
 set(MSGPACK_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/msgpack/src/msgpack/include)
 message(STATUS "MsgPack: " ${MSGPACK_INCLUDE_DIRS})
 
+ExternalProject_Add(
+      cryptopp
+      GIT_REPOSITORY "https://github.com/weidai11/cryptopp.git"
+      GIT_TAG "master"
+      PREFIX cryptopp
+      UPDATE_COMMAND ""
+      PATCH_COMMAND ""
+      TEST_COMMAND ""
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=install
+    )
+set(CRYPTOPP_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/cryptopp/src/cryptopp-build/install/include)
+set(CRYPTOPP_LIB_DIRS ${PROJECT_BINARY_DIR}/cryptopp/src/cryptopp-build/install/lib)
+set(CRYPTOPP_LIBRARY ${CRYPTOPP_LIB_DIRS}/${CMAKE_STATIC_LIBRARY_PREFIX}cryptopp${CMAKE_STATIC_LIBRARY_SUFFIX})
 
 enable_testing()
 add_subdirectory(test)
@@ -68,13 +81,14 @@ file(GLOB DATABASE_SRCS
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 add_library(${PROJECT_NAME} STATIC ${DATABASE_SRCS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
-target_link_libraries(${PROJECT_NAME} executors ${WEBSOCKETPP_LIBRARIES})
-add_dependencies(${PROJECT_NAME} executors websocketpp asio msgpack)
+link_directories(${CRYPTOPP_LIB_DIRS})
+target_link_libraries(${PROJECT_NAME} executors ${WEBSOCKETPP_LIBRARIES} ${CRYPTOPP_LIBRARY})
+add_dependencies(${PROJECT_NAME} executors websocketpp asio msgpack cryptopp)
 generate_export_header(${PROJECT_NAME})
 include_directories(${WEBSOCKETPP_INCLUDE_DIRS} ${ASIO_INCLUDE_DIRS}
-    ${MSGPACK_INCLUDE_DIRS})
+    ${MSGPACK_INCLUDE_DIRS} ${CRYPTOPP_INCLUDE_DIRS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR} ${WEBSOCKETPP_INCLUDE_DIRS} ${ASIO_INCLUDE_DIRS}
-    ${MSGPACK_INCLUDE_DIRS})
+    ${MSGPACK_INCLUDE_DIRS} ${CRYPTOPP_INCLUDE_DIRS})
 
 

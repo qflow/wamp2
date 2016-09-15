@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <forward_list>
 #include "util/functor.h"
+#include "symbols.h"
 
 
 template<typename... T>
@@ -51,7 +52,7 @@ public:
     void hello()
     {
         std::forward_list<std::string> authmethods{authenticator_type::KEY};
-        auto options = std::make_tuple(std::make_pair("authmethods", authmethods));
+        auto options = std::make_tuple(std::make_pair("authmethods", authmethods), std::make_pair("authid", _auth.authid()));
         auto msg = std::make_tuple(WampMsgCode::HELLO, _realm, options);
         send(msg);
     }
@@ -64,8 +65,23 @@ private:
     template<typename message>
     void message_received(message m)
     {
-        std::vector<typename serializer::variant_type> arr =
-                adapters::as<std::vector<typename serializer::variant_type>>(m);
+        using map = std::unordered_map<std::string, typename serializer::variant_type>;
+        using array = std::vector<typename serializer::variant_type>;
+        array arr = adapters::as<array>(m);
+        WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
+        if(code == WampMsgCode::CHALLENGE)
+        {
+            map extra = adapters::as<map>(arr[2]);
+            std::string challenge = adapters::as<std::string>(extra["challenge"]);
+            std::string response = _auth.response(challenge);
+            auto msg = std::make_tuple(WampMsgCode::AUTHENTICATE, response);
+            send(msg);
+        }
+        else if(code == WampMsgCode::WELCOME)
+        {
+            int r = 0;
+        }
+        int t=0;
     }
     template<typename message>
     void send(message m)

@@ -3,6 +3,10 @@
 
 #include "symbols.h"
 #include <tuple>
+#include <cryptopp/sha.h>
+#include <cryptopp/hmac.h>
+#include <cryptopp/filters.h>
+#include <cryptopp/base64.h>
 
 namespace qflow{
 
@@ -11,6 +15,14 @@ class authenticator
 {
 public:
     static constexpr const char* KEY = "unknown";
+    std::string authid() const
+    {
+        return "unknown";
+    }
+    std::string response(std::string /*challenge*/)
+    {
+        return "unknown";
+    }
 };
 
 template<>
@@ -24,6 +36,25 @@ public:
     using user = std::tuple<const char*, const char*>;
     authenticator(user& u) : _user(u)
     {
+    }
+    std::string authid() const
+    {
+        return std::get<0>(_user);
+    }
+    std::string response(std::string challenge)
+    {
+        const byte* secretData = reinterpret_cast<const byte*>(std::get<1>(_user));
+        size_t secretLen = strlen(std::get<1>(_user));
+        CryptoPP::HMAC<CryptoPP::SHA256> hmac(secretData, secretLen);
+
+        std::string digest;
+
+        CryptoPP::StringSource foo(challenge, true,
+                                   new CryptoPP::HashFilter(hmac,
+                                                            new CryptoPP::Base64Encoder (
+                                                                new CryptoPP::StringSink(digest), false)));
+        return digest;
+
     }
 private:
     user _user;
