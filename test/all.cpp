@@ -18,14 +18,26 @@ int main()
 
     qflow::client c;
     c.init_asio();
-    std::tuple<const char*, const char*> user = std::make_tuple("gemport", "gemport");
-    auto session = qflow::get_session<qflow::msgpack_serializer>(c, "ws://40.217.1.146:8080", "realm1", user);
-    session->add_registration("test", [](){
-        
+    auto user = std::make_tuple("gemport", "gemport");
+    auto callee = qflow::get_session<qflow::msgpack_serializer>(c, "ws://40.217.1.146:8080", "realm1", user);
+    auto caller = qflow::get_session<qflow::msgpack_serializer>(c, "ws://40.217.1.146:8080", "realm1", user);
+
+    callee->set_on_connected([callee, caller](){
+        auto f = callee->add_registration("add", [](int a, int b){
+            return a + b;
+        });
+        f.then([caller](){
+            caller->set_on_connected([caller](){
+                auto res_fut = caller->call<int>("add", 1 ,2);
+                res_fut.then([](int res){
+                    int u=0;
+                });
+            });
+            caller->connect();
+        });
     });
-    session->connect();
+    callee->connect();
 
 
     c.run();
-    int t=0;
 }

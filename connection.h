@@ -53,9 +53,19 @@ public:
         return _state;
     }
     template<typename T>
-    void add_registration(const std::string& uri, T&& reg)
+    qflow::future<void> add_registration(const std::string& uri, T&& reg)
     {
-        _proc.template add_registration<T>(uri, std::forward<T>(reg));
+        return _proc.template add_registration<T>(uri, std::forward<T>(reg));
+    }
+    template<typename ResultType, typename... Args>
+    qflow::future<ResultType> call(const std::string& uri, Args... args)
+    {
+        return _proc.template call<ResultType>(uri, args...);
+    }
+    template<typename T>
+    void set_on_connected(T&& handler)
+    {
+        _proc.set_on_connected(handler);
     }
 
 private:
