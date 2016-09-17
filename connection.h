@@ -43,6 +43,12 @@ public:
     {
         websocketpp::lib::error_code ec;
         _con = _c.get_connection(_uri, ec);
+        if(ec)
+        {
+            std::string m = ec.message();
+            std::cout << "could not create connection because: " << m << std::endl;
+            return;
+        }
         _con->add_subprotocol(serializer::KEY);
         connect_handlers();
         _c.connect(_con);
@@ -85,7 +91,7 @@ private:
     }
     void on_fail(websocketpp::connection_hdl /*hdl*/)
     {
-        //connect();
+        connect();
     }
     void on_close(websocketpp::connection_hdl /*hdl*/){
 

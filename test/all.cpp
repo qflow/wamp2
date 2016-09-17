@@ -1,4 +1,5 @@
 #include "connection.h"
+#include "router.h"
 #include <iostream>
 #include <cassert>
 #include <functional>
@@ -6,6 +7,11 @@
 
 int main()
 {
+    using serializers = std::tuple<qflow::msgpack_serializer>;
+    auto transports = std::make_tuple(qflow::websocket_transport<serializers>(8080));
+    qflow::router<decltype(transports)> router(std::move(transports));
+
+
     auto map = std::make_tuple(std::make_pair("key", "value"));
     auto obj = std::make_tuple(std::string("ahoj"), 5, map);
     qflow::msgpack_serializer serializer;
@@ -19,7 +25,7 @@ int main()
     qflow::client c;
     c.init_asio();
     auto user = std::make_tuple("gemport", "gemport");
-    auto callee = qflow::get_session<qflow::msgpack_serializer>(c, "ws://40.217.1.146:8080", "realm1", user);
+    auto callee = qflow::get_session<qflow::msgpack_serializer>(c, "ws://localhost:8080", "realm1", user);
     auto caller = qflow::get_session<qflow::msgpack_serializer>(c, "ws://40.217.1.146:8080", "realm1", user);
 
     callee->set_on_connected([callee, caller](){
@@ -40,4 +46,5 @@ int main()
 
 
     c.run();
+    int r=0;
 }
