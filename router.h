@@ -78,8 +78,8 @@ private:
             {
                 if(subp == s.KEY)
                 {
-                    auto session = new server_session<server::connection_ptr, decltype(s)>(con);
-                    if(_on_new_session) _on_new_session(server_session_ptr(session));
+                    auto session = std::make_shared<server_session<server::connection_ptr, decltype(s)>>(con);
+                    if(_on_new_session) _on_new_session(session);
                     found = true;
                 }
             }
@@ -93,16 +93,21 @@ private:
 
 };
 
-template<typename Transports>
 class router
 {
 public:
-    router(Transports&& t) : _transports(std::move(t))
+    router()
     {
-
     }
+    template<typename T>
+    void add_transport(T transport_ptr)
+    {
+        transport_ptr->set_on_new_session([](auto session){
+            server_session_ptr p = session;
+        });
+    }
+
 private:
-    Transports _transports;
 };
 
 class realm

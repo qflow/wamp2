@@ -8,8 +8,10 @@
 int main()
 {
     using serializers = std::tuple<qflow::msgpack_serializer>;
-    auto transports = std::make_tuple(qflow::websocket_transport<serializers>(8080));
-    qflow::router<decltype(transports)> router(std::move(transports));
+    auto ws_transport = std::make_shared<qflow::websocket_transport<serializers>>(8080);
+    qflow::router router;
+    router.add_transport(ws_transport);
+
 
 
     auto map = std::make_tuple(std::make_pair("key", "value"));
