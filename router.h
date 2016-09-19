@@ -1,14 +1,22 @@
 #ifndef ROUTER_H
 #define ROUTER_H
 
+#include "util/any.h"
 #include "util/for_each_t.h"
+#include "util/adapters.h"
+#include "symbols.h"
 #include <thread>
+#include <unordered_map>
 #include <tuple>
+#include <unordered_set>
 #define ASIO_STANDALONE
 #define _WEBSOCKETPP_CPP11_STL_
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
 #include <iostream>
+
+using linb::any;
+using linb::any_cast;
 
 typedef websocketpp::server<websocketpp::config::asio> server;
 
@@ -17,6 +25,7 @@ using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
 using websocketpp::lib::bind;
 using websocketpp::lib::ref;
+typedef websocketpp::config::asio::message_type::ptr message_ptr;
 
 namespace qflow{
 
@@ -41,10 +50,16 @@ public:
     {
 
     }
+    template<typename T>
+    void set_on_message(T&& f)
+    {
+        _on_message = f;
+    }
 
 private:
     Serializer _s;
     server::connection_ptr _con;
+    std::function<void(typename Serializer::variant_type)> _on_message;
 };
 
 template<typename Serializers>
@@ -64,21 +79,34 @@ public:
     {
         _on_new_session = callback;
     }
+    template<typename T>
+    void set_on_message(T&& callback)
+    {
+        _on_message = callback;
+    }
 
 private:
     std::function<void(server_session_ptr)> _on_new_session;
+    std::function<void(server_session_ptr, any)> _on_message;
     bool validate(connection_hdl hdl)
     {
         server::connection_ptr con = s.get_con_from_hdl(hdl);
         const std::vector<std::string> & subp_requests = con->get_requested_subprotocols();
         bool found = false;
-        auto a = for_each_t(serializers, [this, &found, subp_requests, con](auto idx, auto s){
+        auto a = for_each_t(serializers, [this, &found, subp_requests, con](auto, auto s){
             if(found) return 0;
             for(std::string subp: subp_requests)
             {
                 if(subp == s.KEY)
                 {
-                    auto session = std::make_shared<server_session<server::connection_ptr, decltype(s)>>(con);
+                    using serializer_type = decltype(s);
+                    auto session = std::make_shared<server_session<server::connection_ptr, serializer_type>>(con);
+                    con->set_message_handler([this, session](websocketpp::connection_hdl /*hdl*/, message_ptr msg){
+                        std::string msg_str = msg->get_payload();
+                        serializer_type s;
+                        auto msg_native = s.deserialize(msg_str);
+                        if(_on_message) _on_message(session, adapters::as<any>(msg_native));
+                    });
                     if(_on_new_session) _on_new_session(session);
                     found = true;
                 }
@@ -102,12 +130,25 @@ public:
     template<typename T>
     void add_transport(T transport_ptr)
     {
-        transport_ptr->set_on_new_session([](auto session){
-            server_session_ptr p = session;
-        });
+        transport_ptr->set_on_new_session(std::bind(&router::on_new_session, this, _1));
+        transport_ptr->set_on_message(std::bind(&router::on_message, this, _1, _2));
     }
 
 private:
+    void on_new_session(server_session_ptr session)
+    {
+        _sessions.insert(session);
+    }
+    void on_message(server_session_ptr session, any message)
+    {
+        using map = std::unordered_map<std::string, any>;
+        using array = std::vector<any>;
+        array arr = adapters::as<array>(message);
+        WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
+        int t=0;
+    }
+
+    std::unordered_set<server_session_ptr> _sessions;
 };
 
 class realm
