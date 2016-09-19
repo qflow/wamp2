@@ -52,7 +52,7 @@ struct convert<std::vector<any>> {
     msgpack::object const& operator()(msgpack::object const& o, std::vector<any>& v) const {
         std::vector<any> list;
         if (o.type != msgpack::type::ARRAY) throw msgpack::type_error();
-        for(uint i=0; i<o.via.array.size; i++)
+        for(unsigned int i=0; i<o.via.array.size; i++)
         {
             any a = adapters::as<any>(o.via.array.ptr[i]);
             list.push_back(a);
@@ -66,7 +66,7 @@ struct convert<std::unordered_map<std::string,any>> {
     msgpack::object const& operator()(msgpack::object const& o, std::unordered_map<std::string,any>& v) const {
         std::unordered_map<std::string,any> map;
         if (o.type != msgpack::type::MAP) throw msgpack::type_error();
-        for(uint i=0; i<o.via.map.size; i++)
+        for(unsigned int i=0; i<o.via.map.size; i++)
         {
             msgpack::object_kv pair = o.via.map.ptr[i];
             std::string key = adapters::as<std::string>(pair.key);

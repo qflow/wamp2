@@ -1,4 +1,5 @@
 add_executable(wamp_test_all all.cpp)
+target_compile_options(wamp_test_all PUBLIC "/bigobj")
 add_dependencies(wamp_test_all wamp2)
 target_link_libraries(wamp_test_all wamp2)
 add_test(wamp.test.all test_all)

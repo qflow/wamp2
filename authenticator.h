@@ -24,7 +24,6 @@ public:
         return "unknown";
     }
 };
-
 template<>
 class authenticator<std::tuple<const char*, const char*>>
 {

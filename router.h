@@ -145,7 +145,17 @@ private:
         using array = std::vector<any>;
         array arr = adapters::as<array>(message);
         WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
-        int t=0;
+        if(code == WampMsgCode::HELLO)
+        {
+
+            map details = adapters::as<map>(arr[2]);
+            array auth_methods = adapters::as<array>(details["authmethods"]);
+            for(auto v: auth_methods)
+            {
+                std::string method = adapters::as<std::string>(v);
+                int i=0;
+            }
+        }
     }
 
     std::unordered_set<server_session_ptr> _sessions;
