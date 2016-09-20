@@ -1,5 +1,6 @@
 add_executable(wamp_test_all all.cpp)
-target_compile_options(wamp_test_all PUBLIC "/bigobj")
+set(MSVC_OPTIONS "/bigobj")
+target_compile_options(wamp_test_all PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:${MSVC_OPTIONS}>")
 add_dependencies(wamp_test_all wamp2)
 target_link_libraries(wamp_test_all wamp2)
 add_test(wamp.test.all test_all)

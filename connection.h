@@ -22,22 +22,18 @@ typedef websocketpp::config::asio::message_type::ptr message_ptr;
 
 
 
-template<typename serializer, typename user>
-class session<client::connection_ptr, serializer, user>
+template<typename serializer, typename authenticator_type>
+class session<client::connection_ptr, serializer, authenticator_type>
 {
 public:
-    using type = session<client::connection_ptr, serializer, user>;
+    using type = session<client::connection_ptr, serializer, authenticator_type>;
     using ptr = std::shared_ptr<type>;
-    session<client::connection_ptr, serializer, user>(client& c, const std::string& uri, const std::string& realm, user& u) : _c(c),
+    session<client::connection_ptr, serializer, authenticator_type>(client& c, const std::string& uri, const std::string& realm, authenticator_type& u) : _c(c),
         _uri(uri)
     {
         _proc.set_send_callback(bind(&type::on_send,this,_1));
-        _proc.set_authenticator(authenticator<user>(u));
+        _proc.set_authenticator(authenticator_type(u));
         _proc.set_realm(realm);
-    }
-    ~session<client::connection_ptr, serializer, user>()
-    {
-
     }
     void connect()
     {
@@ -45,6 +41,11 @@ public:
         _con = _c.get_connection(_uri, ec);
         if(ec)
         {
+            _con->set_message_handler(bind(&type::on_message,this,_1,_2));
+            _con->set_close_handler(bind(&type::on_close,this,_1));
+            _con->set_open_handler(bind(&type::on_open,this,_1));
+            _con->set_fail_handler(bind(&type::on_fail,this,_1));
+            _con->set_pong_timeout_handler(bind(&type::on_pong_timeout,this,_1,_2));
             std::string m = ec.message();
             std::cout << "could not create connection because: " << m << std::endl;
             return;
@@ -79,7 +80,7 @@ private:
     std::string _uri;
     SESSION_STATE _state;
     client::connection_ptr _con;
-    processor<serializer, authenticator<user>> _proc;
+    processor<serializer, authenticator_type> _proc;
     void on_message(websocketpp::connection_hdl /*hdl*/, message_ptr msg)
     {
         std::string s = msg->get_payload();
@@ -117,10 +118,10 @@ private:
 
 
 
-template<typename serializer, typename user>
-typename session<client::connection_ptr, serializer, user>::ptr get_session(client& c, const std::string& uri, const std::string& realm, user& u)
+template<typename serializer, typename authenticator_type>
+typename session<client::connection_ptr, serializer, authenticator_type>::ptr get_session(client& c, const std::string& uri, const std::string& realm, authenticator_type& u)
 {
-    using session_type = session<client::connection_ptr, serializer, user>;
+    using session_type = session<client::connection_ptr, serializer, authenticator_type>;
     auto session_ptr = std::make_shared<session_type>(c, uri, realm, u);
     return session_ptr;
 }

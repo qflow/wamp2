@@ -11,6 +11,8 @@
 #include <cryptopp/filters.h>
 #include <cryptopp/base64.h>
 
+using namespace std::chrono;
+
 namespace qflow{
 
 template<typename T, typename Enable = void>
@@ -47,22 +49,22 @@ public:
     std::string challenge(T token)
     {
         json challenge;
-        challenge["authid"] = token["authid"];
+        challenge["authid"] = adapters::as<std::string>(token["authid"]);
         challenge["authprovider"] = "wampcra";
         challenge["authmethod"] = "wampcra";
         std::string nonceStr = std::to_string(random::generate());
         challenge["nonce"] = nonceStr;
-        QString timestampStr = QDateTime::currentDateTimeUtc().toString("yyyy-mm-ddThh:mm:zzzZ");
-        auto now = std::chrono::system_clock::now();
+        auto now = system_clock::now();
         auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
         auto in_time_t = std::chrono::system_clock::to_time_t(now);
         std::stringstream ss;
         ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%dT%H:%M:");
-        ss << std::setfill('0') << std::setw(3) << ms.count();
+        ss << std::setfill('0') << std::setw(3) << ms.count() << "Z";
 
         challenge["timestamp"] = ss.str();
-        challenge["session"] = token["sessionId"];
-        return challenge.dump();
+        challenge["session"] = adapters::as<id_type>(token["sessionId"]);
+        std::string res = challenge.dump();
+        return res;
     }
 
     std::string response(std::string challenge)
@@ -83,5 +85,6 @@ public:
 private:
     user _user;
 };
+using wampcra_authenticator = authenticator<std::tuple<const char*, const char*>>;
 }
 #endif

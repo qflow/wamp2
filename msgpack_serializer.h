@@ -15,17 +15,103 @@ using linb::any_cast;
 template <typename T>
 struct map_traits
 {};
-
 template<typename Key, typename... Value>
 struct map_traits<std::tuple<std::pair<Key, Value>...>>
 {
     static constexpr bool is_map = true;
 };
 
+template <typename T>
+struct tuple_traits
+{};
+
+template<typename... T>
+struct tuple_traits<std::tuple<T...>>
+{
+    static constexpr bool is_tuple = true;
+};
+
 
 namespace msgpack {
 MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
 namespace adaptor {
+template<>
+struct pack<any> {
+    template <typename Stream>
+    packer<Stream>& operator()(msgpack::packer<Stream>& o, any const& a) const {
+        if(a.type() == typeid(bool))
+        {
+            o.pack(any_cast<bool>(a));
+        }
+        else if(a.type() == typeid(std::string))
+        {
+            o.pack(any_cast<std::string>(a));
+        }
+        else if(a.type() == typeid(const char*))
+        {
+            o.pack(any_cast<const char*>(a));
+        }
+        else if(a.type() == typeid(qflow::WampMsgCode))
+        {
+            o.pack(any_cast<qflow::WampMsgCode>(a));
+        }
+        else if(a.type() == typeid(int))
+        {
+            o.pack(any_cast<int>(a));
+        }
+        else if(a.type() == typeid(unsigned long long))
+        {
+            o.pack(any_cast<unsigned long long>(a));
+        }
+        else if(a.type() == typeid(float))
+        {
+            o.pack(any_cast<float>(a));
+        }
+        else if(a.type() == typeid(double))
+        {
+            o.pack(any_cast<double>(a));
+        }
+        else if(a.type() == typeid(std::vector<any>))
+        {
+            o.pack(any_cast<std::vector<any>>(a));
+        }
+        else if(a.type() == typeid(std::unordered_map<std::string, any>))
+        {
+            o.pack(any_cast<std::unordered_map<std::string, any>>(a));
+        }
+        else
+        {
+            auto name = a.type().name();
+            assert(false);
+        }
+        return o;
+    }
+};
+template<>
+struct pack<std::vector<any>> {
+    template <typename Stream>
+    packer<Stream>& operator()(msgpack::packer<Stream>& o, std::vector<any> const& arr) const {
+        o.pack_array(static_cast<uint32_t>(arr.size()));
+        for(any a: arr)
+        {
+            o.pack(a);
+        }
+        return o;
+    }
+};
+template<>
+struct pack<std::unordered_map<std::string, any>> {
+    template <typename Stream>
+    packer<Stream>& operator()(msgpack::packer<Stream>& o, std::unordered_map<std::string, any> const& map) const {
+        o.pack_map(static_cast<uint32_t>(map.size()));
+        for(const auto& n: map)
+        {
+            o.pack(n.first);
+            o.pack(n.second);
+        }
+        return o;
+    }
+};
 template<>
 struct pack<qflow::WampMsgCode> {
     template <typename Stream>
@@ -170,6 +256,32 @@ struct adapter<T, std::shared_ptr<msgpack::object_handle>>
     {
         msgpack::object o = p->get();
         return o.as<T>();
+    }
+};
+
+/*template<typename T>
+struct adapter<any, T, std::enable_if_t<tuple_traits<T>::is_tuple>>
+{
+    static any convert(const T& t)
+    {
+        std::vector<any> list;
+        auto res = for_each_t(t, [&list](auto idx, auto element){
+            list->push_back(adapters::as<any>(element));
+        });
+        return any(list);
+    }
+};*/
+template<typename... T>
+struct adapter<any, std::tuple<T...>>
+{
+    static any convert(const std::tuple<T...>& t)
+    {
+        std::vector<any> list;
+        auto res = for_each_t(t, [&list](auto idx, auto element){
+            list.push_back(adapters::as<any>(element));
+            return 0;
+        });
+        return any(list);
     }
 };
 template<>

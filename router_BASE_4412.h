@@ -3,10 +3,8 @@
 
 #include "util/any.h"
 #include "util/for_each_t.h"
-#include "util/for_index.h"
 #include "util/adapters.h"
 #include "symbols.h"
-#include "random.h"
 #include <thread>
 #include <unordered_map>
 #include <tuple>
@@ -35,13 +33,7 @@ namespace qflow{
 class server_session_base
 {
 public:
-    virtual void post_message(any message) = 0;
-    template<typename T>
-    void post_message(T msg)
-    {
-        any a = adapters::as<any>(msg);
-        post_message(a);
-    }
+
 };
 using server_session_ptr = std::shared_ptr<server_session_base>;
 
@@ -63,11 +55,6 @@ public:
     {
         _on_message = f;
     }
-    void post_message(any message)
-    {
-        std::string str = _s.serialize(message);
-        _con->send(str, websocketpp::frame::opcode::binary);
-    }
 
 private:
     Serializer _s;
@@ -83,12 +70,10 @@ public:
     {
         s.set_validate_handler(bind(&websocket_transport::validate,this,_1));
         s.init_asio();
-        s.set_reuse_addr(true);
         s.listen(port);
         s.start_accept();
         t = std::thread(&server::run, &s);
     }
-
     template<typename T>
     void set_on_new_session(T&& callback)
     {
@@ -136,7 +121,6 @@ private:
 
 };
 
-template<typename Authenticators>
 class router
 {
 public:
@@ -169,20 +153,7 @@ private:
             for(auto v: auth_methods)
             {
                 std::string method = adapters::as<std::string>(v);
-                auto res = for_index<std::tuple_size<Authenticators>::value>([method, session, details](auto idx){
-                    using auth_type = typename std::tuple_element<idx.value, Authenticators>::type;
-                    if(auth_type::KEY == method)
-                    {
-                        id_type sessionId = random::generate();
-                        std::string authId = adapters::as<std::string>(details.at("authid"));
-                        map token = {{"sessionId", any(sessionId)}, {"authid", any(authId)}};
-                        auth_type auth;
-                        std::string challenge = auth.challenge(token);
-                        auto msg = std::make_tuple(WampMsgCode::CHALLENGE, auth_type::KEY, challenge);
-                        session->post_message(msg);
-                    }
-                    return 0;
-                });
+                int i=0;
             }
         }
     }

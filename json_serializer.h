@@ -16,12 +16,12 @@ using namespace nlohmann;
 
 namespace qflow{
 
-class msgpack_serializer
+class json_serializer
 {
 public:
     static constexpr const char* KEY = KEY_WAMP_MSGPACK_SUB;
     using variant_type = json;
-    msgpack_serializer()
+    json_serializer()
     {
 
     }
