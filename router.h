@@ -5,6 +5,7 @@
 #include "util/for_each_t.h"
 #include "util/adapters.h"
 #include "symbols.h"
+#include "random.h"
 #include <thread>
 #include <unordered_map>
 #include <tuple>
@@ -153,7 +154,9 @@ private:
             for(auto v: auth_methods)
             {
                 std::string method = adapters::as<std::string>(v);
-                int i=0;
+                id_type sessionId = random::generate();
+                map token = {{"sessionId", any(sessionId)}, {"authid", details["authid"]}};
+
             }
         }
     }

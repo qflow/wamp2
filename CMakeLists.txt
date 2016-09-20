@@ -75,6 +75,18 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set(CRYPTOPP_LIBRARY ${CRYPTOPP_LIB_DIRS}/${CMAKE_STATIC_LIBRARY_PREFIX}cryptopp-static${CMAKE_STATIC_LIBRARY_SUFFIX})
 endif()
 
+ExternalProject_Add(
+      json
+      GIT_REPOSITORY "https://github.com/nlohmann/json.git"
+      GIT_TAG "master"
+      PREFIX json
+      UPDATE_COMMAND ""
+      PATCH_COMMAND ""
+      TEST_COMMAND ""
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=install
+    )
+set(JSON_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/json/src/json-build/install/include)
+
 enable_testing()
 add_subdirectory(test)
 set(EXECUTORS_BUILD_TESTS OFF)
@@ -88,12 +100,12 @@ add_library(${PROJECT_NAME} STATIC ${DATABASE_SRCS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 link_directories(${CRYPTOPP_LIB_DIRS})
 target_link_libraries(${PROJECT_NAME} executors ${WEBSOCKETPP_LIBRARIES} ${CRYPTOPP_LIBRARY})
-add_dependencies(${PROJECT_NAME} executors websocketpp asio msgpack cryptopp)
+add_dependencies(${PROJECT_NAME} executors websocketpp asio msgpack cryptopp json)
 generate_export_header(${PROJECT_NAME})
 include_directories(${WEBSOCKETPP_INCLUDE_DIRS} ${ASIO_INCLUDE_DIRS}
-    ${MSGPACK_INCLUDE_DIRS} ${CRYPTOPP_INCLUDE_DIRS})
+    ${MSGPACK_INCLUDE_DIRS} ${CRYPTOPP_INCLUDE_DIRS} ${JSON_INCLUDE_DIRS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR} ${WEBSOCKETPP_INCLUDE_DIRS} ${ASIO_INCLUDE_DIRS}
-    ${MSGPACK_INCLUDE_DIRS} ${CRYPTOPP_INCLUDE_DIRS})
+    ${MSGPACK_INCLUDE_DIRS} ${CRYPTOPP_INCLUDE_DIRS} ${JSON_INCLUDE_DIRS})
 
 
