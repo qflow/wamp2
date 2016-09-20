@@ -58,5 +58,6 @@ public:
 private:
     user _user;
 };
+using wampcra_authenticator = authenticator<std::tuple<const char*, const char*>>;
 }
 #endif

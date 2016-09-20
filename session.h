@@ -6,7 +6,7 @@ enum class SESSION_STATE : int {
     OPENED = 1,
     CLOSED = -1
 };
-template<typename transport_connection_type, typename serializer, typename user>
+template<typename transport_connection_type, typename serializer, typename authenticator_type>
 class session
 {
 public:

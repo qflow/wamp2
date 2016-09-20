@@ -3,6 +3,7 @@
 
 #include "util/any.h"
 #include "util/for_each_t.h"
+#include "util/for_index.h"
 #include "util/adapters.h"
 #include "symbols.h"
 #include <thread>
@@ -70,10 +71,12 @@ public:
     {
         s.set_validate_handler(bind(&websocket_transport::validate,this,_1));
         s.init_asio();
+        s.set_reuse_addr(true);
         s.listen(port);
         s.start_accept();
         t = std::thread(&server::run, &s);
     }
+
     template<typename T>
     void set_on_new_session(T&& callback)
     {
@@ -121,6 +124,7 @@ private:
 
 };
 
+template<typename Authenticators>
 class router
 {
 public:
@@ -153,7 +157,15 @@ private:
             for(auto v: auth_methods)
             {
                 std::string method = adapters::as<std::string>(v);
-                int i=0;
+                auto res = for_index<std::tuple_size<Authenticators>::value>([method, session, details](auto idx){
+                    using auth_type = typename std::tuple_element<idx, Authenticators>::type;
+                    if(auth_type::KEY == method)
+                    {
+                        std::string authId = adapters::as<std::string>(details.at("authid"));
+                        int r=0;
+                    }
+                    return 0;
+                });
             }
         }
     }
