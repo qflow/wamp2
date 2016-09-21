@@ -8,8 +8,6 @@
 
 int main()
 {
-
-
     using serializers = std::tuple<qflow::msgpack_serializer>;
     auto ws_transport = std::make_shared<qflow::websocket_transport<serializers>>(8083);
     qflow::router<std::tuple<qflow::wampcra_authenticator>> router;
@@ -30,7 +28,7 @@ int main()
     qflow::client c;
     c.init_asio();
     auto user = std::make_tuple("gemport", "gemport");
-    qflow::authenticator<std::tuple<const char*, const char*>> auth(user);
+    qflow::wampcra_authenticator auth(user);
     auto callee = qflow::get_session<qflow::msgpack_serializer>(c, "ws://localhost:8083", "realm1", auth);
     auto caller = qflow::get_session<qflow::msgpack_serializer>(c, "ws://40.217.1.146:8080", "realm1", auth);
 

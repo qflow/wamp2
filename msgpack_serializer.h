@@ -276,9 +276,10 @@ struct adapter<any, std::tuple<T...>>
 {
     static any convert(const std::tuple<T...>& t)
     {
-        std::vector<any> list;
+        using Tuple = std::tuple<T...>;
+        std::vector<any> list(std::tuple_size<Tuple>::value);
         auto res = for_each_t(t, [&list](auto idx, auto element){
-            list.push_back(adapters::as<any>(element));
+            list[idx.value] = adapters::as<any>(element);
             return 0;
         });
         return any(list);

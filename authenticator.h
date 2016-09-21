@@ -15,30 +15,15 @@ using namespace std::chrono;
 
 namespace qflow{
 
-template<typename T, typename Enable = void>
-class authenticator
-{
-public:
-    static constexpr const char* KEY = "unknown";
-    std::string authid() const
-    {
-        return "unknown";
-    }
-    std::string response(std::string /*challenge*/)
-    {
-        return "unknown";
-    }
-};
-template<>
-class authenticator<std::tuple<const char*, const char*>>
+class wampcra_authenticator
 {
 public:
     static constexpr const char* KEY = KEY_WAMPCRA;
-    authenticator()
+    wampcra_authenticator()
     {
     }
     using user = std::tuple<const char*, const char*>;
-    authenticator(user& u) : _user(u)
+    wampcra_authenticator(user& u) : _user(u)
     {
     }
     std::string authid() const
@@ -85,6 +70,5 @@ public:
 private:
     user _user;
 };
-using wampcra_authenticator = authenticator<std::tuple<const char*, const char*>>;
 }
 #endif

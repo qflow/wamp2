@@ -171,28 +171,49 @@ private:
                 std::string method = adapters::as<std::string>(v);
                 auto res = for_index<std::tuple_size<Authenticators>::value>([method, session, details](auto idx){
                     using auth_type = typename std::tuple_element<idx.value, Authenticators>::type;
-                    if(auth_type::KEY == method)
+                    auto k = auth_type::KEY;
+                    if(k == method)
                     {
                         id_type sessionId = random::generate();
                         std::string authId = adapters::as<std::string>(details.at("authid"));
                         map token = {{"sessionId", any(sessionId)}, {"authid", any(authId)}};
                         auth_type auth;
                         std::string challenge = auth.challenge(token);
-                        auto msg = std::make_tuple(WampMsgCode::CHALLENGE, auth_type::KEY, challenge);
+                        auto msg = std::make_tuple(WampMsgCode::CHALLENGE, k, map{{"challenge", challenge}});
                         session->post_message(msg);
                     }
                     return 0;
                 });
             }
         }
+        else if(code == WampMsgCode::AUTHENTICATE)
+            {
+                std::string response = adapters::as<std::string>(arr[1]);
+                int i=0;
+                /*if(authResult == AUTH_RESULT::ACCEPTED)
+                {
+                    if(!_authSession->user) _authSession->user = _authSession->authenticator->getUser(_authSession.data());
+                    if(_authSession->user)
+                    {
+                        welcome();
+                    }
+                    else abort(KEY_ERR_NOT_AUTHORIZED);
+                }
+                if(authResult == AUTH_RESULT::REJECTED)
+                {
+                    abort(KEY_ERR_NOT_AUTHENTICATED);
+                }
+                if(authResult == AUTH_RESULT::CONTINUE)
+                {
+                    QVariantMap obj;
+                    obj["challenge"] = _authSession->outBuffer;
+                    QVariantList authArr{WampMsgCode::CHALLENGE, _authSession->authenticator->authMethod(), obj};
+                    sendWampMessage(authArr);
+                }*/
+        }
     }
 
     std::unordered_set<server_session_ptr> _sessions;
-};
-
-class realm
-{
-
 };
 }
 #endif
