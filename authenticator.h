@@ -15,7 +15,19 @@ using namespace std::chrono;
 
 namespace qflow{
 
-class wampcra_authenticator
+struct token
+{
+    id_type sessionId;
+    std::string authid;
+};
+
+class authenticator
+{
+public:
+    virtual std::string challenge(token t) = 0;
+};
+
+class wampcra_authenticator : public authenticator
 {
 public:
     static constexpr const char* KEY = KEY_WAMPCRA;
@@ -30,11 +42,10 @@ public:
     {
         return std::get<0>(_user);
     }
-    template<typename T>
-    std::string challenge(T token)
+    std::string challenge(token t)
     {
         json challenge;
-        challenge["authid"] = adapters::as<std::string>(token["authid"]);
+        challenge["authid"] = t.authid;
         challenge["authprovider"] = "wampcra";
         challenge["authmethod"] = "wampcra";
         std::string nonceStr = std::to_string(random::generate());
@@ -47,7 +58,7 @@ public:
         ss << std::setfill('0') << std::setw(3) << ms.count() << "Z";
 
         challenge["timestamp"] = ss.str();
-        challenge["session"] = adapters::as<id_type>(token["sessionId"]);
+        challenge["session"] = t.sessionId;
         std::string res = challenge.dump();
         return res;
     }

@@ -1,6 +1,7 @@
 #ifndef ROUTER_H
 #define ROUTER_H
 
+#include "authenticator.h"
 #include "util/any.h"
 #include "util/for_each_t.h"
 #include "util/for_index.h"
@@ -42,6 +43,12 @@ public:
         any a = adapters::as<any>(msg);
         post_message(a);
     }
+    id_type sessionId() const
+    {
+        return _sessionId;
+    }
+protected:
+    id_type _sessionId = random::generate();
 };
 using server_session_ptr = std::shared_ptr<server_session_base>;
 
@@ -151,6 +158,7 @@ public:
     }
 
 private:
+    std::unordered_map<server_session_ptr, std::shared_ptr<authenticator>> _authenticating_sessions;
     void on_new_session(server_session_ptr session)
     {
         _sessions.insert(session);
@@ -169,16 +177,16 @@ private:
             for(auto v: auth_methods)
             {
                 std::string method = adapters::as<std::string>(v);
-                auto res = for_index<std::tuple_size<Authenticators>::value>([method, session, details](auto idx){
+                auto res = for_index<std::tuple_size<Authenticators>::value>([method, session, details, this](auto idx){
                     using auth_type = typename std::tuple_element<idx.value, Authenticators>::type;
                     auto k = auth_type::KEY;
                     if(k == method)
                     {
-                        id_type sessionId = random::generate();
                         std::string authId = adapters::as<std::string>(details.at("authid"));
-                        map token = {{"sessionId", any(sessionId)}, {"authid", any(authId)}};
-                        auth_type auth;
-                        std::string challenge = auth.challenge(token);
+                        token t = {session->sessionId(), authId};
+                        auto auth = std::make_shared<auth_type>();
+                        _authenticating_sessions[session] = auth;
+                        std::string challenge = auth->challenge(t);
                         auto msg = std::make_tuple(WampMsgCode::CHALLENGE, k, map{{"challenge", challenge}});
                         session->post_message(msg);
                     }
