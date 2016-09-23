@@ -15,6 +15,7 @@ using namespace std::chrono;
 
 namespace qflow{
 
+enum class AUTH_RESULT {ACCEPTED = 1, REJECTED = 0, CONTINUE = 2};
 struct token
 {
     id_type sessionId;
@@ -25,14 +26,20 @@ class authenticator
 {
 public:
     virtual std::string challenge(token t) = 0;
+    virtual AUTH_RESULT authenticate(const std::string& response, std::string& newChallenge) = 0;
 };
 
+template<typename CredentialStore>
 class wampcra_authenticator : public authenticator
 {
 public:
     static constexpr const char* KEY = KEY_WAMPCRA;
     wampcra_authenticator()
     {
+    }
+    wampcra_authenticator(CredentialStore& cred_store) : _store(cred_store)
+    {
+
     }
     using user = std::tuple<const char*, const char*>;
     wampcra_authenticator(user& u) : _user(u)
@@ -62,6 +69,19 @@ public:
         std::string res = challenge.dump();
         return res;
     }
+    AUTH_RESULT authenticate(const std::string& response, std::string& newChallenge)
+    {
+        /*QMessageAuthenticationCode hash(QCryptographicHash::Sha256);
+        WampCraUser* crauser = (WampCraUser*)user.data();
+        hash.setKey(crauser->secret().toLatin1());
+        QString challengeStr = challenge["challenge"].toString();
+        hash.addData(challengeStr.toLatin1());
+
+        QByteArray hashResult = hash.result();
+        QByteArray finalSig = hashResult.toBase64();
+        if(finalSig == inBuffer) return AUTH_RESULT::ACCEPTED;*/
+        return AUTH_RESULT::REJECTED;
+    }
 
     std::string response(std::string challenge)
     {
@@ -79,6 +99,7 @@ public:
 
     }
 private:
+    CredentialStore _store;
     user _user;
 };
 }

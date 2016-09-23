@@ -4,7 +4,6 @@
 #include "authenticator.h"
 #include "util/any.h"
 #include "util/for_each_t.h"
-#include "util/for_index.h"
 #include "util/adapters.h"
 #include "symbols.h"
 #include "random.h"
@@ -147,7 +146,7 @@ template<typename Authenticators>
 class router
 {
 public:
-    router()
+    router(Authenticators& auths) : _authenticators(auths)
     {
     }
     template<typename T>
@@ -177,18 +176,16 @@ private:
             for(auto v: auth_methods)
             {
                 std::string method = adapters::as<std::string>(v);
-                auto res = for_index<std::tuple_size<Authenticators>::value>([method, session, details, this](auto idx){
-                    using auth_type = typename std::tuple_element<idx.value, Authenticators>::type;
-                    auto k = auth_type::KEY;
-                    if(k == method)
+                auto res = for_each_t(_authenticators, [method, session, details, this](auto, auto auth_prototype){
+                    if(auth_prototype.KEY == method)
                     {
                         std::string authId = adapters::as<std::string>(details.at("authid"));
                         token t = {session->sessionId(), authId};
-                        auto auth = std::make_shared<auth_type>();
+                        auto auth = std::make_shared<decltype(auth_prototype)>(auth_prototype);
                         _authenticating_sessions[session] = auth;
                         std::string challenge = auth->challenge(t);
-                        auto msg = std::make_tuple(WampMsgCode::CHALLENGE, k, map{{"challenge", challenge}});
-                        session->post_message(msg);
+                        /*auto msg = std::make_tuple(WampMsgCode::CHALLENGE, k, map{{"challenge", challenge}});
+                        session->post_message(msg);*/
                     }
                     return 0;
                 });
@@ -220,7 +217,7 @@ private:
                 }*/
         }
     }
-
+    Authenticators _authenticators;
     std::unordered_set<server_session_ptr> _sessions;
 };
 }
