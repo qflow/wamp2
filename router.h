@@ -157,14 +157,22 @@ public:
     }
 
 private:
+    using map = std::unordered_map<std::string, any>;
     std::unordered_map<server_session_ptr, std::shared_ptr<authenticator>> _authenticating_sessions;
     void on_new_session(server_session_ptr session)
     {
         _sessions.insert(session);
     }
+    void welcome(server_session_ptr session)
+    {
+        map roles = {{"broker", map()}, {"dealer", map()}};
+        map details = {{"roles", roles}};
+        auto msg = std::make_tuple(WampMsgCode::WELCOME, session->sessionId(), details);
+        session->post_message(msg);
+    }
+
     void on_message(server_session_ptr session, any message)
     {
-        using map = std::unordered_map<std::string, any>;
         using array = std::vector<any>;
         array arr = adapters::as<array>(message);
         WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
@@ -184,8 +192,8 @@ private:
                         auto auth = std::make_shared<decltype(auth_prototype)>(auth_prototype);
                         _authenticating_sessions[session] = auth;
                         std::string challenge = auth->challenge(t);
-                        /*auto msg = std::make_tuple(WampMsgCode::CHALLENGE, k, map{{"challenge", challenge}});
-                        session->post_message(msg);*/
+                        auto msg = std::make_tuple(WampMsgCode::CHALLENGE, auth_prototype.KEY, map{{"challenge", challenge}});
+                        session->post_message(msg);
                     }
                     return 0;
                 });
@@ -194,17 +202,15 @@ private:
         else if(code == WampMsgCode::AUTHENTICATE)
             {
                 std::string response = adapters::as<std::string>(arr[1]);
-                int i=0;
-                /*if(authResult == AUTH_RESULT::ACCEPTED)
+                auto auth = _authenticating_sessions[session];
+                std::string new_challenge;
+                AUTH_RESULT res = auth->authenticate(response, new_challenge);
+                if(res == AUTH_RESULT::ACCEPTED)
                 {
-                    if(!_authSession->user) _authSession->user = _authSession->authenticator->getUser(_authSession.data());
-                    if(_authSession->user)
-                    {
-                        welcome();
-                    }
-                    else abort(KEY_ERR_NOT_AUTHORIZED);
+                    welcome(session);
+                    _authenticating_sessions.erase(session);
                 }
-                if(authResult == AUTH_RESULT::REJECTED)
+                /*if(authResult == AUTH_RESULT::REJECTED)
                 {
                     abort(KEY_ERR_NOT_AUTHENTICATED);
                 }
@@ -215,6 +221,13 @@ private:
                     QVariantList authArr{WampMsgCode::CHALLENGE, _authSession->authenticator->authMethod(), obj};
                     sendWampMessage(authArr);
                 }*/
+        }
+        else if(code == WampMsgCode::REGISTER)
+        {
+            std::string uri = adapters::as<std::string>(arr[3]);
+            id_type requestId = adapters::as<id_type>(arr[1]);
+
+            int r=0;
         }
     }
     Authenticators _authenticators;

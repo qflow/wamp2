@@ -53,6 +53,7 @@ public:
     {
         json challenge;
         challenge["authid"] = t.authid;
+        _authid = t.authid;
         challenge["authprovider"] = "wampcra";
         challenge["authmethod"] = "wampcra";
         std::string nonceStr = std::to_string(random::generate());
@@ -67,19 +68,21 @@ public:
         challenge["timestamp"] = ss.str();
         challenge["session"] = t.sessionId;
         std::string res = challenge.dump();
+        _challenge = res;
         return res;
     }
     AUTH_RESULT authenticate(const std::string& response, std::string& newChallenge)
     {
-        /*QMessageAuthenticationCode hash(QCryptographicHash::Sha256);
-        WampCraUser* crauser = (WampCraUser*)user.data();
-        hash.setKey(crauser->secret().toLatin1());
-        QString challengeStr = challenge["challenge"].toString();
-        hash.addData(challengeStr.toLatin1());
+        auto secret = _store[_authid];
+        const byte* secretData = reinterpret_cast<const byte*>(secret.c_str());
+        CryptoPP::HMAC<CryptoPP::SHA256> hmac(secretData, secret.size());
+        std::string digest;
+        CryptoPP::StringSource foo(_challenge, true,
+                                   new CryptoPP::HashFilter(hmac,
+                                                            new CryptoPP::Base64Encoder (
+                                                                new CryptoPP::StringSink(digest), false)));
 
-        QByteArray hashResult = hash.result();
-        QByteArray finalSig = hashResult.toBase64();
-        if(finalSig == inBuffer) return AUTH_RESULT::ACCEPTED;*/
+        if(response == digest) return AUTH_RESULT::ACCEPTED;
         return AUTH_RESULT::REJECTED;
     }
 
@@ -101,6 +104,8 @@ public:
 private:
     CredentialStore _store;
     user _user;
+    std::string _authid;
+    std::string _challenge;
 };
 }
 #endif

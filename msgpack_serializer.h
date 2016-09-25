@@ -327,6 +327,15 @@ struct adapter<qflow::WampMsgCode, any>
         return static_cast<qflow::WampMsgCode>(t);
     }
 };
+template<>
+struct adapter<unsigned long long, any>
+{
+    static unsigned long long convert(any a)
+    {
+        unsigned int t=any_cast<unsigned int>(a);
+        return static_cast<unsigned long long>(t);
+    }
+};
 }
 
 namespace qflow{
