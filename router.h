@@ -170,6 +170,11 @@ private:
         auto msg = std::make_tuple(WampMsgCode::WELCOME, session->sessionId(), details);
         session->post_message(msg);
     }
+    struct registration
+    {
+        id_type id;
+        server_session_ptr session;
+    };
 
     void on_message(server_session_ptr session, any message)
     {
@@ -227,10 +232,42 @@ private:
         {
             std::string uri = adapters::as<std::string>(arr[3]);
             id_type requestId = adapters::as<id_type>(arr[1]);
+            id_type registrationId = random::generate();
+            _uri_registration[uri] = {registrationId, session};
+            auto msg = std::make_tuple(WampMsgCode::WAMP_REGISTERED, requestId, registrationId);
+            session->post_message(msg);
+        }
+        else if(code == WampMsgCode::CALL)
+        {
+            id_type requestId = adapters::as<id_type>(arr[1]);
+            std::string uri = adapters::as<std::string>(arr[3]);
+            array params;
+            if(arr.size()>4) params = adapters::as<array>(arr[4]);
+            auto reg = _uri_registration.find(uri);
+            if(reg != _uri_registration.end())
+            {
+                auto msg = std::make_tuple(WampMsgCode::INVOCATION, requestId, reg->second.id, map(), params);
+                _pending_invocations[requestId] = session;
+                reg->second.session->post_message(msg);
+            }
+            else
+            {
+                //error(WampMsgCode::CALL, KEY_ERR_NO_SUCH_PROCEDURE, requestId, {{"procedureUri", uri}});
+            }
+        }
+        else if(code == WampMsgCode::YIELD)
+        {
+            id_type requestId = adapters::as<id_type>(arr[1]);
+            auto caller = _pending_invocations[requestId];
+            _pending_invocations.erase(requestId);
+            array resultArr;
+            if(arr.size()>3) resultArr = adapters::as<array>(arr[3]);
+            auto msg = std::make_tuple(WampMsgCode::RESULT, requestId, map(), resultArr);
 
-            int r=0;
         }
     }
+    std::unordered_map<std::string, registration> _uri_registration;
+    std::unordered_map<id_type, server_session_ptr> _pending_invocations;
     Authenticators _authenticators;
     std::unordered_set<server_session_ptr> _sessions;
 };

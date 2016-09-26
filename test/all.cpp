@@ -66,7 +66,7 @@ int main()
     auto user = std::make_tuple("gemport", "gemport");
     qflow::wampcra_authenticator<std::unordered_map<std::string, std::string>> client_auth(user);
     auto callee = qflow::get_session<qflow::msgpack_serializer>(c, "ws://localhost:8083", "realm1", client_auth);
-    auto caller = qflow::get_session<qflow::msgpack_serializer>(c, "ws://40.217.1.146:8080", "realm1", client_auth);
+    auto caller = qflow::get_session<qflow::msgpack_serializer>(c, "ws://localhost:8083", "realm1", client_auth);
 
     callee->set_on_connected([callee, caller](){
         auto f = callee->add_registration("add", [](int a, int b){
