@@ -45,9 +45,9 @@ int main()
     std::unordered_map<std::string, std::string> credentials = {{"gemport", "gemport"}};
     qflow::wampcra_authenticator<decltype(credentials)> wampcra(credentials);
     auto authenticators = std::make_tuple(wampcra);
-    auto ws_transport = std::make_shared<qflow::websocket_transport<serializers>>(8083);
+    qflow::websocket_transport<serializers> ws_transport(8083);
     qflow::router<decltype(authenticators)> router(authenticators);
-    router.add_transport(ws_transport);
+    router.add_transport(&ws_transport);
 
 
 

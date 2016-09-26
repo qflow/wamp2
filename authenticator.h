@@ -10,6 +10,7 @@
 #include <cryptopp/hmac.h>
 #include <cryptopp/filters.h>
 #include <cryptopp/base64.h>
+#include <unordered_map>
 
 using namespace std::chrono;
 
@@ -71,20 +72,7 @@ public:
         _challenge = res;
         return res;
     }
-    AUTH_RESULT authenticate(const std::string& response, std::string& newChallenge)
-    {
-        auto secret = _store[_authid];
-        const byte* secretData = reinterpret_cast<const byte*>(secret.c_str());
-        CryptoPP::HMAC<CryptoPP::SHA256> hmac(secretData, secret.size());
-        std::string digest;
-        CryptoPP::StringSource foo(_challenge, true,
-                                   new CryptoPP::HashFilter(hmac,
-                                                            new CryptoPP::Base64Encoder (
-                                                                new CryptoPP::StringSink(digest), false)));
-
-        if(response == digest) return AUTH_RESULT::ACCEPTED;
-        return AUTH_RESULT::REJECTED;
-    }
+    AUTH_RESULT authenticate(const std::string& response, std::string&);
 
     std::string response(std::string challenge)
     {
@@ -107,5 +95,21 @@ private:
     std::string _authid;
     std::string _challenge;
 };
+
+template<typename T>
+AUTH_RESULT wampcra_authenticator<T>::authenticate(const std::string& response, std::string&)
+{
+    auto secret = std::string(_store[_authid]);
+    const byte* secretData = reinterpret_cast<const byte*>(secret.c_str());
+    CryptoPP::HMAC<CryptoPP::SHA256> hmac(secretData, secret.size());
+    std::string digest;
+    CryptoPP::StringSource foo(_challenge, true,
+                               new CryptoPP::HashFilter(hmac,
+                                                        new CryptoPP::Base64Encoder (
+                                                            new CryptoPP::StringSink(digest), false)));
+
+    if(response == digest) return AUTH_RESULT::ACCEPTED;
+    return AUTH_RESULT::REJECTED;
+}
 }
 #endif

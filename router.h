@@ -185,14 +185,15 @@ private:
             {
                 std::string method = adapters::as<std::string>(v);
                 auto res = for_each_t(_authenticators, [method, session, details, this](auto, auto auth_prototype){
-                    if(auth_prototype.KEY == method)
+                    auto k = auth_prototype.KEY;
+                    if(k == method)
                     {
                         std::string authId = adapters::as<std::string>(details.at("authid"));
                         token t = {session->sessionId(), authId};
                         auto auth = std::make_shared<decltype(auth_prototype)>(auth_prototype);
                         _authenticating_sessions[session] = auth;
                         std::string challenge = auth->challenge(t);
-                        auto msg = std::make_tuple(WampMsgCode::CHALLENGE, auth_prototype.KEY, map{{"challenge", challenge}});
+                        auto msg = std::make_tuple(WampMsgCode::CHALLENGE, k, map{{"challenge", challenge}});
                         session->post_message(msg);
                     }
                     return 0;
