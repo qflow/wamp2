@@ -34,12 +34,6 @@ public:
 
 int main()
 {
-    B b;
-    A* b2 = static_cast<A*>(new B(b));
-    int i = b2->get();
-
-
-
     using serializers = std::tuple<qflow::msgpack_serializer>;
 
     std::unordered_map<std::string, std::string> credentials = {{"gemport", "gemport"}};

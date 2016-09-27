@@ -263,7 +263,7 @@ private:
             array resultArr;
             if(arr.size()>3) resultArr = adapters::as<array>(arr[3]);
             auto msg = std::make_tuple(WampMsgCode::RESULT, requestId, map(), resultArr);
-
+            caller->post_message(msg);
         }
     }
     std::unordered_map<std::string, registration> _uri_registration;

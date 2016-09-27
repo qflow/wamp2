@@ -63,6 +63,10 @@ struct pack<any> {
         {
             o.pack(any_cast<unsigned long long>(a));
         }
+        else if(a.type() == typeid(unsigned int))
+        {
+            o.pack(any_cast<unsigned int>(a));
+        }
         else if(a.type() == typeid(float))
         {
             o.pack(any_cast<float>(a));
