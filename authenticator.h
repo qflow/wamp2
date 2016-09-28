@@ -28,6 +28,7 @@ class authenticator
 public:
     virtual std::string challenge(token t) = 0;
     virtual AUTH_RESULT authenticate(const std::string& response, std::string& newChallenge) = 0;
+    virtual std::unique_ptr<authenticator> clone() const = 0;
 };
 
 template<typename CredentialStore>
@@ -89,6 +90,11 @@ public:
         return digest;
 
     }
+    std::unique_ptr<authenticator> clone() const
+    {
+        return std::make_unique<wampcra_authenticator>(*this);
+    }
+
 private:
     CredentialStore _store;
     user _user;

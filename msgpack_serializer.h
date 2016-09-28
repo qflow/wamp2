@@ -210,48 +210,7 @@ struct adapter<msgpack::object, any>
 template<>
 struct adapter<any, msgpack::object>
 {
-    static any convert(msgpack::object o)
-    {
-        if(o.type == msgpack::type::BOOLEAN)
-        {
-            return any(o.as<bool>());
-        }
-        else if(o.type == msgpack::type::STR)
-        {
-            return any(o.as<std::string>());
-        }
-        else if(o.type == msgpack::type::POSITIVE_INTEGER)
-        {
-            unsigned int i = o.as<unsigned int>();
-            return any(i);
-        }
-        else if(o.type == msgpack::type::NEGATIVE_INTEGER)
-        {
-            return any(o.as<int>());
-        }
-        else if(o.type == msgpack::type::FLOAT)
-        {
-            return any(o.as<float>());
-        }
-        else if(o.type == msgpack::type::BIN)
-        {
-            std::string s(o.via.bin.ptr, o.via.bin.size);
-            return any(s);
-        }
-        else if(o.type == msgpack::type::ARRAY)
-        {
-            return any(o.as<std::vector<any>>());
-        }
-        else if(o.type == msgpack::type::MAP)
-        {
-            return any(o.as<std::unordered_map<std::string, any>>());
-        }
-        else
-        {
-            assert(false);
-        }
-        return any();
-    }
+    static any convert(msgpack::object o);
 };
 template<typename T>
 struct adapter<T, std::shared_ptr<msgpack::object_handle>>
@@ -262,19 +221,6 @@ struct adapter<T, std::shared_ptr<msgpack::object_handle>>
         return o.as<T>();
     }
 };
-
-/*template<typename T>
-struct adapter<any, T, std::enable_if_t<tuple_traits<T>::is_tuple>>
-{
-    static any convert(const T& t)
-    {
-        std::vector<any> list;
-        auto res = for_each_t(t, [&list](auto idx, auto element){
-            list->push_back(adapters::as<any>(element));
-        });
-        return any(list);
-    }
-};*/
 template<typename... T>
 struct adapter<any, std::tuple<T...>>
 {
@@ -298,6 +244,16 @@ struct adapter<any, std::shared_ptr<msgpack::object_handle>>
         return adapters::as<any>(o);
     }
 };
+template<>
+struct adapter<msgpack::object, qflow::WampMsgCode>
+{
+    static msgpack::object convert(qflow::WampMsgCode code);
+};
+template<>
+struct adapter<unsigned long long, any>
+{
+    static unsigned long long convert(any a);
+};
 template<typename T>
 struct adapter<msgpack::object, T>
 {
@@ -306,14 +262,7 @@ struct adapter<msgpack::object, T>
         return msgpack::object(t);
     }
 };
-template<>
-struct adapter<msgpack::object, qflow::WampMsgCode>
-{
-    static msgpack::object convert(qflow::WampMsgCode code)
-    {
-        return msgpack::object(static_cast<int>(code));
-    }
-};
+
 template<>
 struct adapter<qflow::WampMsgCode, msgpack::object>
 {
@@ -329,15 +278,6 @@ struct adapter<qflow::WampMsgCode, any>
     {
         unsigned int t=any_cast<unsigned int>(a);
         return static_cast<qflow::WampMsgCode>(t);
-    }
-};
-template<>
-struct adapter<unsigned long long, any>
-{
-    static unsigned long long convert(any a)
-    {
-        unsigned int t=any_cast<unsigned int>(a);
-        return static_cast<unsigned long long>(t);
     }
 };
 }

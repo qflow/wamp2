@@ -142,11 +142,10 @@ private:
 
 };
 
-template<typename Authenticators>
 class router
 {
 public:
-    router(Authenticators& auths) : _authenticators(auths)
+    router()
     {
     }
     template<typename T>
@@ -154,6 +153,11 @@ public:
     {
         transport_ptr->set_on_new_session(std::bind(&router::on_new_session, this, _1));
         transport_ptr->set_on_message(std::bind(&router::on_message, this, _1, _2));
+    }
+    template<typename T>
+    void add_authenticator(T authenticator_ptr)
+    {
+        _authenticators[authenticator_ptr->KEY] = authenticator_ptr;
     }
 
 private:
@@ -176,99 +180,10 @@ private:
         server_session_ptr session;
     };
 
-    void on_message(server_session_ptr session, any message)
-    {
-        using array = std::vector<any>;
-        array arr = adapters::as<array>(message);
-        WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
-        if(code == WampMsgCode::HELLO)
-        {
-
-            map details = adapters::as<map>(arr[2]);
-            array auth_methods = adapters::as<array>(details["authmethods"]);
-            for(auto v: auth_methods)
-            {
-                std::string method = adapters::as<std::string>(v);
-                auto res = for_each_t(_authenticators, [method, session, details, this](auto, auto auth_prototype){
-                    auto k = auth_prototype.KEY;
-                    if(k == method)
-                    {
-                        std::string authId = adapters::as<std::string>(details.at("authid"));
-                        token t = {session->sessionId(), authId};
-                        auto auth = std::make_shared<decltype(auth_prototype)>(auth_prototype);
-                        _authenticating_sessions[session] = auth;
-                        std::string challenge = auth->challenge(t);
-                        auto msg = std::make_tuple(WampMsgCode::CHALLENGE, k, map{{"challenge", challenge}});
-                        session->post_message(msg);
-                    }
-                    return 0;
-                });
-            }
-        }
-        else if(code == WampMsgCode::AUTHENTICATE)
-            {
-                std::string response = adapters::as<std::string>(arr[1]);
-                auto auth = _authenticating_sessions[session];
-                std::string new_challenge;
-                AUTH_RESULT res = auth->authenticate(response, new_challenge);
-                if(res == AUTH_RESULT::ACCEPTED)
-                {
-                    welcome(session);
-                    _authenticating_sessions.erase(session);
-                }
-                /*if(authResult == AUTH_RESULT::REJECTED)
-                {
-                    abort(KEY_ERR_NOT_AUTHENTICATED);
-                }
-                if(authResult == AUTH_RESULT::CONTINUE)
-                {
-                    QVariantMap obj;
-                    obj["challenge"] = _authSession->outBuffer;
-                    QVariantList authArr{WampMsgCode::CHALLENGE, _authSession->authenticator->authMethod(), obj};
-                    sendWampMessage(authArr);
-                }*/
-        }
-        else if(code == WampMsgCode::REGISTER)
-        {
-            std::string uri = adapters::as<std::string>(arr[3]);
-            id_type requestId = adapters::as<id_type>(arr[1]);
-            id_type registrationId = random::generate();
-            _uri_registration[uri] = {registrationId, session};
-            auto msg = std::make_tuple(WampMsgCode::WAMP_REGISTERED, requestId, registrationId);
-            session->post_message(msg);
-        }
-        else if(code == WampMsgCode::CALL)
-        {
-            id_type requestId = adapters::as<id_type>(arr[1]);
-            std::string uri = adapters::as<std::string>(arr[3]);
-            array params;
-            if(arr.size()>4) params = adapters::as<array>(arr[4]);
-            auto reg = _uri_registration.find(uri);
-            if(reg != _uri_registration.end())
-            {
-                auto msg = std::make_tuple(WampMsgCode::INVOCATION, requestId, reg->second.id, map(), params);
-                _pending_invocations[requestId] = session;
-                reg->second.session->post_message(msg);
-            }
-            else
-            {
-                //error(WampMsgCode::CALL, KEY_ERR_NO_SUCH_PROCEDURE, requestId, {{"procedureUri", uri}});
-            }
-        }
-        else if(code == WampMsgCode::YIELD)
-        {
-            id_type requestId = adapters::as<id_type>(arr[1]);
-            auto caller = _pending_invocations[requestId];
-            _pending_invocations.erase(requestId);
-            array resultArr;
-            if(arr.size()>3) resultArr = adapters::as<array>(arr[3]);
-            auto msg = std::make_tuple(WampMsgCode::RESULT, requestId, map(), resultArr);
-            caller->post_message(msg);
-        }
-    }
+    void on_message(server_session_ptr session, any message);
     std::unordered_map<std::string, registration> _uri_registration;
     std::unordered_map<id_type, server_session_ptr> _pending_invocations;
-    Authenticators _authenticators;
+    std::unordered_map<std::string, std::shared_ptr<authenticator>> _authenticators;
     std::unordered_set<server_session_ptr> _sessions;
 };
 }

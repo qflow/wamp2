@@ -6,42 +6,17 @@
 #include <cassert>
 #include <functional>
 
-
-class A
-{
-public:
-    virtual int get() = 0;
-};
-
-class B: public A
-{
-public:
-    int val = 5;
-    int get()
-    {
-        return val;
-    }
-    B()
-    {
-
-    }
-
-    B(const B& other) : val(other.val)
-    {
-
-    }
-};
-
 int main()
 {
     using serializers = std::tuple<qflow::msgpack_serializer>;
 
     std::unordered_map<std::string, std::string> credentials = {{"gemport", "gemport"}};
-    qflow::wampcra_authenticator<decltype(credentials)> wampcra(credentials);
+    auto wampcra = std::make_shared<qflow::wampcra_authenticator<decltype(credentials)>>(credentials);
     auto authenticators = std::make_tuple(wampcra);
     qflow::websocket_transport<serializers> ws_transport(8083);
-    qflow::router<decltype(authenticators)> router(authenticators);
+    qflow::router router;
     router.add_transport(&ws_transport);
+    router.add_authenticator(wampcra);
 
 
 
@@ -70,7 +45,7 @@ int main()
             caller->set_on_connected([caller](){
                 auto res_fut = caller->call<int>("add", 1 ,2);
                 res_fut.then([](int res){
-                    int u=0;
+                    std::cout << res;
                 });
             });
             caller->connect();
