@@ -12,22 +12,10 @@ int main()
 
     std::unordered_map<std::string, std::string> credentials = {{"gemport", "gemport"}};
     auto wampcra = std::make_shared<qflow::wampcra_authenticator<decltype(credentials)>>(credentials);
-    auto authenticators = std::make_tuple(wampcra);
     qflow::websocket_transport<serializers> ws_transport(8083);
     qflow::router router;
     router.add_transport(&ws_transport);
     router.add_authenticator(wampcra);
-
-
-
-    auto map = std::make_tuple(std::make_pair("key", "value"));
-    auto obj = std::make_tuple(std::string("ahoj"), 5, map);
-    qflow::msgpack_serializer serializer;
-    std::string ss = serializer.serialize(obj);
-    auto des = serializer.deserialize(ss);
-    std::vector<msgpack::object> arr = adapters::as<std::vector<msgpack::object>>(des);
-    std::string s = adapters::as<std::string>(arr[0]);
-    assert(s == std::string("ahoj"));
 
 
     qflow::client c;
