@@ -118,9 +118,10 @@ private:
             if(found) return 0;
             for(std::string subp: subp_requests)
             {
-                if(subp == s.KEY)
+                using serializer_type = decltype(s);
+                auto k = serializer_type::KEY;
+                if(subp == k)
                 {
-                    using serializer_type = decltype(s);
                     auto session = std::make_shared<server_session<server::connection_ptr, serializer_type>>(con);
                     con->set_message_handler([this, session](websocketpp::connection_hdl /*hdl*/, message_ptr msg){
                         std::string msg_str = msg->get_payload();
@@ -155,9 +156,10 @@ public:
         transport_ptr->set_on_message(std::bind(&router::on_message, this, _1, _2));
     }
     template<typename T>
-    void add_authenticator(T authenticator_ptr)
+    void add_authenticator(std::shared_ptr<T> authenticator_ptr)
     {
-        _authenticators[authenticator_ptr->KEY] = authenticator_ptr;
+        auto k = T::KEY;
+        _authenticators[k] = authenticator_ptr;
     }
 
 private:

@@ -3,6 +3,7 @@ include(GenerateExportHeader)
 include(ExternalProject)
 project(wamp2)
 
+
 find_package(websocketpp QUIET)
 if(websocketpp_FOUND)
 else()
@@ -96,8 +97,9 @@ file(GLOB DATABASE_SRCS
          ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
          ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-add_library(${PROJECT_NAME} STATIC ${DATABASE_SRCS})
+add_library(${PROJECT_NAME} STATIC ${DATABASE_SRCS} module.modulemap)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
+target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:Clang>:-fmodules -fmodules-cache-path=${CMAKE_CURRENT_BINARY_DIR}/cache>)
 link_directories(${CRYPTOPP_LIB_DIRS})
 target_link_libraries(${PROJECT_NAME} executors ${WEBSOCKETPP_LIBRARIES} ${CRYPTOPP_LIBRARY})
 add_dependencies(${PROJECT_NAME} executors websocketpp asio msgpack cryptopp json)

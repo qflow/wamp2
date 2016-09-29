@@ -11,14 +11,14 @@ int main()
     using serializers = std::tuple<qflow::msgpack_serializer>;
 
     std::unordered_map<std::string, std::string> credentials = {{"gemport", "gemport"}};
-    auto wampcra = std::make_shared<qflow::wampcra_authenticator<decltype(credentials)>>(credentials);
+    auto wampcra = std::make_shared<qflow::wampcra_authenticator>(credentials);
     qflow::websocket_transport<serializers> ws_transport(8083);
     qflow::router router;
     router.add_transport(&ws_transport);
     router.add_authenticator(wampcra);
 
 
-    qflow::client c;
+    /*qflow::client c;
     c.init_asio();
     auto user = std::make_tuple("gemport", "gemport");
     qflow::wampcra_authenticator<std::unordered_map<std::string, std::string>> client_auth(user);
@@ -43,5 +43,5 @@ int main()
 
 
     c.run();
-    int r=0;
+    int r=0;*/
 }
