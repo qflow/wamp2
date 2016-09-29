@@ -18,10 +18,10 @@ int main()
     router.add_authenticator(wampcra);
 
 
-    /*qflow::client c;
+    qflow::client c;
     c.init_asio();
     auto user = std::make_tuple("gemport", "gemport");
-    qflow::wampcra_authenticator<std::unordered_map<std::string, std::string>> client_auth(user);
+    qflow::wampcra_authenticator client_auth(user);
     auto callee = qflow::get_session<qflow::msgpack_serializer>(c, "ws://localhost:8083", "realm1", client_auth);
     auto caller = qflow::get_session<qflow::msgpack_serializer>(c, "ws://localhost:8083", "realm1", client_auth);
 
@@ -43,5 +43,5 @@ int main()
 
 
     c.run();
-    int r=0;*/
+    int r=0;
 }

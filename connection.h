@@ -32,7 +32,7 @@ public:
         _uri(uri)
     {
         _proc.set_send_callback(bind(&type::on_send,this,_1));
-        _proc.set_authenticator(authenticator_type(u));
+        _proc.set_authenticator(std::move(u));
         _proc.set_realm(realm);
     }
     void connect()

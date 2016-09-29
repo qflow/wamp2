@@ -7,6 +7,7 @@
 #include <chrono>
 #include <tuple>
 #include <unordered_map>
+#include <cassert>
 
 using namespace std::chrono;
 
@@ -39,18 +40,19 @@ class credential_store_adapter : public credential_store
 public:
     credential_store_adapter(T&&)
     {
-
+        assert(false);
     }
     std::string get_credential(std::string) const
     {
+        assert(false);
         return std::string();
     }
 };
 template<>
-class credential_store_adapter<std::unordered_map<std::string, std::string>>
+class credential_store_adapter<std::unordered_map<std::string, std::string>> : public credential_store
 {
 public:
-    credential_store_adapter(std::unordered_map<std::string, std::string>&& cred_store) : _store(cred_store)
+    credential_store_adapter(std::unordered_map<std::string, std::string> cred_store) : _store(cred_store)
     {
 
     }
@@ -72,9 +74,9 @@ public:
     {
     }
     template<typename CredentialStore>
-    wampcra_authenticator(CredentialStore&& cred_store)
+    wampcra_authenticator(CredentialStore cred_store)
     {
-        _store = std::make_shared<credential_store_adapter<CredentialStore>>(cred_store);
+        _store = std::make_shared<credential_store_adapter<CredentialStore>>(std::forward<CredentialStore>(cred_store));
     }
     wampcra_authenticator(std::shared_ptr<credential_store> cred_store)
     {
