@@ -5,6 +5,9 @@
 #include <cryptopp/hmac.h>
 #include <cryptopp/filters.h>
 #include <cryptopp/base64.h>
+#include <chrono>
+
+using namespace std::chrono;
 
 namespace qflow{
 
@@ -19,7 +22,7 @@ std::string wampcra_authenticator::challenge(token t)
     challenge["nonce"] = nonceStr;
     auto now = system_clock::now();
     auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
-    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+    auto in_time_t = system_clock::to_time_t(now);
     std::stringstream ss;
     ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%dT%H:%M:");
     ss << std::setfill('0') << std::setw(3) << ms.count() << "Z";

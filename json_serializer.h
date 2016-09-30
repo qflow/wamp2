@@ -9,9 +9,6 @@
 #include <nlohmann/json.hpp>
 #include <cassert>
 
-using linb::any;
-using linb::any_cast;
-
 using namespace nlohmann;
 
 namespace qflow{

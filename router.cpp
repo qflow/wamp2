@@ -1,7 +1,15 @@
 #include "router.h"
 #include "msgpack_serializer.h"
+#include <tuple>
 
 namespace qflow{
+void router::welcome(server_session_ptr session)
+{
+    map roles = {{"broker", map()}, {"dealer", map()}};
+    map details = {{"roles", roles}};
+    auto msg = std::make_tuple(WampMsgCode::WELCOME, session->sessionId(), details);
+    session->post_message(msg);
+}
 void router::on_message(server_session_ptr session, any message)
 {
     using array = std::vector<any>;

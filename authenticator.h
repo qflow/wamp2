@@ -4,12 +4,8 @@
 #include "symbols.h"
 #include "random.h"
 #include <memory>
-#include <chrono>
 #include <tuple>
 #include <unordered_map>
-#include <cassert>
-
-using namespace std::chrono;
 
 namespace qflow{
 
@@ -37,16 +33,6 @@ public:
 template<typename T>
 class credential_store_adapter : public credential_store
 {
-public:
-    credential_store_adapter(T&&)
-    {
-        assert(false);
-    }
-    std::string get_credential(std::string) const
-    {
-        assert(false);
-        return std::string();
-    }
 };
 template<>
 class credential_store_adapter<std::unordered_map<std::string, std::string>> : public credential_store
