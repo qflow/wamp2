@@ -4,6 +4,7 @@
 #include "server_session.h"
 #include "util/any.h"
 #include <memory>
+#include <functional>
 
 namespace qflow{
 
