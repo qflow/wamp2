@@ -10,7 +10,7 @@
 
 int main()
 {
-    /*using serializers = std::tuple<qflow::msgpack_serializer>;
+    using serializers = std::tuple<qflow::msgpack_serializer>;
 
     std::unordered_map<std::string, std::string> credentials = {{"gemport", "gemport"}};
     auto wampcra = std::make_shared<qflow::wampcra_authenticator>(credentials);
@@ -20,7 +20,7 @@ int main()
     router.add_authenticator(wampcra);
 
 
-    qflow::client c;
+    /*qflow::client c;
     c.init_asio();
     auto user = std::make_tuple("gemport", "gemport");
     qflow::wampcra_authenticator client_auth(user);

@@ -3,7 +3,6 @@
 
 #include <random>
 
-
 namespace qflow{
 
 using id_type = unsigned long long;
