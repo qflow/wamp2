@@ -1,5 +1,6 @@
 #include "router.h"
 #include "msgpack_serializer.h"
+#include "server_session.h"
 #include <tuple>
 
 namespace qflow{

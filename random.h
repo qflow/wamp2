@@ -13,7 +13,6 @@ public:
     {
         return d(e);
     }
-
 private:
     static std::default_random_engine e;
     static std::uniform_int_distribution<id_type> d;

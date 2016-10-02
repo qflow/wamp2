@@ -20,7 +20,7 @@ int main()
     router.add_authenticator(wampcra);
 
 
-    /*qflow::client c;
+    qflow::client c;
     c.init_asio();
     auto user = std::make_tuple("gemport", "gemport");
     qflow::wampcra_authenticator client_auth(user);
@@ -45,5 +45,5 @@ int main()
 
 
     c.run();
-    int r=0;*/
+    int r=0;  
 }

@@ -6,6 +6,8 @@
 #include <cryptopp/filters.h>
 #include <cryptopp/base64.h>
 #include <chrono>
+#include <sstream>
+#include <iomanip>
 
 using namespace std::chrono;
 
