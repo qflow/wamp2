@@ -98,8 +98,15 @@ file(GLOB DATABASE_SRCS
          ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 add_library(${PROJECT_NAME} STATIC ${DATABASE_SRCS} module.modulemap)
+#set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
+<<<<<<< HEAD
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:Clang>:-fmodules -fmodules-cache-path=${CMAKE_CURRENT_BINARY_DIR}/cache>)
-target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest /await>)
+target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest>)
+=======
+#target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:Clang>:-fmodules -fmodules-cache-path=${CMAKE_CURRENT_BINARY_DIR}/cache>)
+target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:Clang>:-std=c++1z>)
+target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:MSVC>:/std:c++14>)
+>>>>>>> b2b544a5f0e368c2d584635221163ff13cd2cb3e
 link_directories(${CRYPTOPP_LIB_DIRS})
 target_link_libraries(${PROJECT_NAME} executors ${WEBSOCKETPP_LIBRARIES} ${CRYPTOPP_LIBRARY})
 add_dependencies(${PROJECT_NAME} executors websocketpp asio msgpack cryptopp json)

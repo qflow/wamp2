@@ -7,9 +7,41 @@
 #include <iostream>
 #include <cassert>
 #include <functional>
+#include <thread>
+#include <experimental/coroutine>
+#include <experimental/generator>
+
+
+std::future<int> delay(int ms)
+{
+    return std::async([ms]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+        return 5;
+    });
+}
+std::experimental::generator<int> gen(int start)
+{
+    for(int i=start;i<1000;i++)
+    {
+        co_yield i;
+    }
+}
+
+std::future<void> testAwait()
+{
+    auto a = delay(2000);
+    auto b = delay(2000);
+    int u=co_await a + co_await b;
+    for(int i: gen(10))
+    {
+        std::cout << i;
+    }
+    int t=0;
+}
 
 int main()
 {
+    testAwait().get();
     using serializers = std::tuple<qflow::msgpack_serializer>;
 
     std::unordered_map<std::string, std::string> credentials = {{"gemport", "gemport"}};
@@ -20,7 +52,7 @@ int main()
     router.add_authenticator(wampcra);
 
 
-    /*qflow::client c;
+    qflow::client c;
     c.init_asio();
     auto user = std::make_tuple("gemport", "gemport");
     qflow::wampcra_authenticator client_auth(user);
@@ -45,5 +77,5 @@ int main()
 
 
     c.run();
-    int r=0;*/
+    int r=0;  
 }

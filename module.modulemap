@@ -1,36 +1,29 @@
+module util{
+module any{
+  header "util/any.h"
+  export *
+}
+module adapters{
+  header "util/adapters.h"
+  export *
+}
+}
 module qflow{
-
-  module random {
-    header "random.h"
-    export *
-  }
-  module symbols{
-    header "symbols.h"
-  }
-  module msgpack_serializer{
-    header "msgpack_serializer.h"
-    export *
-  }
-  module session{
-    header "session.h"
-  }
-  module server_session{
-    header "server_session.h"
-  }
-  module authenticator {
-    header "authenticator.h"
-    export *
-  }
-  module router{
-    header "router.h"
-    export *
-  }
-  module connection{
-    header "connection.h"
-    export *
-  }
-  /*module websocket_transport{
+module symbols{
+  header "symbols.h"
+  export *
+}
+  module websocket_transport{
     header "websocket_transport.h"
     export *
+  }
+  module json_serializer{
+    header "json_serializer.h"
+    export *
+  }
+  /*module msgpack_serializer{
+    header "msgpack_serializer.h"
+    export *
   }*/
+
 }

@@ -1,10 +1,7 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
 
-#define ASIO_STANDALONE
-#define _WEBSOCKETPP_CPP11_STL_
-#include <websocketpp/config/asio_no_tls.hpp>
-#include <websocketpp/client.hpp>
+#include "websocket_dependencies.h"
 #include <functional>
 #include "msgpack_serializer.h"
 #include "processor.h"
@@ -12,13 +9,6 @@
 #include "authenticator.h"
 
 namespace qflow{
-
-
-using websocketpp::lib::placeholders::_1;
-using websocketpp::lib::placeholders::_2;
-using websocketpp::lib::bind;
-typedef websocketpp::client<websocketpp::config::asio> client;
-typedef websocketpp::config::asio::message_type::ptr message_ptr;
 
 
 
