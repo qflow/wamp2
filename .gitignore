@@ -3,4 +3,7 @@
 *~
 *.orig
 *.kdev4
+*.db
+.vs
 build
+ipch

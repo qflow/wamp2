@@ -8,6 +8,7 @@
 #include <cassert>
 #include <functional>
 #include <thread>
+#include <experimental/resumable>
 #include <experimental/coroutine>
 #include <experimental/generator>
 
@@ -31,6 +32,7 @@ std::future<void> testAwait()
 {
     auto a = delay(2000);
     auto b = delay(2000);
+    qflow::future<int> ff;
     int u=co_await a + co_await b;
     for(int i: gen(10))
     {
@@ -41,6 +43,10 @@ std::future<void> testAwait()
 
 int main()
 {
+	for (int i : gen(10))
+	{
+		std::cout << i;
+	}
     testAwait().get();
     using serializers = std::tuple<qflow::msgpack_serializer>;
 

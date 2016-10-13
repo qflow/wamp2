@@ -9,8 +9,8 @@ if(websocketpp_FOUND)
 else()
     ExternalProject_Add(
       websocketpp
-      GIT_REPOSITORY "https://github.com/zaphoyd/websocketpp.git"
-      GIT_TAG "master"
+      GIT_REPOSITORY "https://github.com/qflow/websocketpp.git"
+      GIT_TAG "c++17_compliance"
       PREFIX websocketpp
       UPDATE_COMMAND ""
       PATCH_COMMAND ""
