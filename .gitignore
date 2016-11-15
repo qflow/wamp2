@@ -8,3 +8,4 @@
 .vs
 build
 ipch
+*._export.h
