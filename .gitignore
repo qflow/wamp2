@@ -3,7 +3,8 @@
 *~
 *.orig
 *.kdev4
-*.db
+*.VC.db
+*.VC.opendb
 .vs
 build
 ipch

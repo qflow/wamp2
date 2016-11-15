@@ -3,7 +3,6 @@ include(GenerateExportHeader)
 include(ExternalProject)
 project(wamp2)
 
-
 find_package(websocketpp QUIET)
 if(websocketpp_FOUND)
 else()
@@ -41,6 +40,16 @@ ExternalProject_Add(
 )
 set(ASIO_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/asio/src/asio/asio/include)
 
+ExternalProject_Add(
+      nghttp2
+      GIT_REPOSITORY "https://github.com/nghttp2/nghttp2.git"
+      GIT_TAG "master"
+      PREFIX nghttp2
+      CMAKE_ARGS "-DENABLE_ASIO_LIB=ON" -DCMAKE_INSTALL_PREFIX=install
+      UPDATE_COMMAND ""
+      PATCH_COMMAND ""
+      TEST_COMMAND ""
+    )
 
 ExternalProject_Add(
       msgpack
@@ -97,7 +106,7 @@ file(GLOB DATABASE_SRCS
          ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
          ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-add_library(${PROJECT_NAME} STATIC ${DATABASE_SRCS} module.modulemap)
+add_library(${PROJECT_NAME} STATIC ${DATABASE_SRCS})
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:Clang>:-fmodules -fmodules-cache-path=${CMAKE_CURRENT_BINARY_DIR}/cache>)
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest /await>)
 link_directories(${CRYPTOPP_LIB_DIRS})
