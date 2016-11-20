@@ -1,10 +1,13 @@
 #ifndef SERVER_SESSION_H
 #define SERVER_SESSION_H
 
-#include "util/any.h"
 #include "util/adapters.h"
 #include "random.h"
 #include <memory>
+#include <experimental/any>
+
+using std::experimental::any;
+using std::experimental::any_cast;
 
 namespace qflow{
 class server_session_base

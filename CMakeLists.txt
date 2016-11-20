@@ -24,7 +24,6 @@ else()
 endif()
 add_definitions(${WEBSOCKETPP_DEFINITIONS})
 
-
 ExternalProject_Add(
   asio
   GIT_REPOSITORY "https://github.com/chriskohlhoff/asio.git"
@@ -41,15 +40,18 @@ ExternalProject_Add(
 set(ASIO_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/asio/src/asio/asio/include)
 
 ExternalProject_Add(
-      nghttp2
-      GIT_REPOSITORY "https://github.com/nghttp2/nghttp2.git"
+      beast
+      GIT_REPOSITORY "https://github.com/vinniefalco/Beast.git"
       GIT_TAG "master"
-      PREFIX nghttp2
-      CMAKE_ARGS "-DENABLE_ASIO_LIB=ON" -DCMAKE_INSTALL_PREFIX=install
+      PREFIX beast
+      CONFIGURE_COMMAND ""
+      BUILD_COMMAND ""
+      INSTALL_COMMAND ""
       UPDATE_COMMAND ""
       PATCH_COMMAND ""
       TEST_COMMAND ""
     )
+set(BEAST_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/beast/src/beast/include)
 
 ExternalProject_Add(
       msgpack
@@ -111,11 +113,11 @@ target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:Clang>:-fmodul
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest /await>)
 link_directories(${CRYPTOPP_LIB_DIRS})
 target_link_libraries(${PROJECT_NAME} executors ${WEBSOCKETPP_LIBRARIES} ${CRYPTOPP_LIBRARY})
-add_dependencies(${PROJECT_NAME} executors websocketpp asio msgpack cryptopp json)
+add_dependencies(${PROJECT_NAME} executors websocketpp asio msgpack cryptopp json beast)
 generate_export_header(${PROJECT_NAME})
-include_directories(${WEBSOCKETPP_INCLUDE_DIRS} ${ASIO_INCLUDE_DIRS}
+include_directories(${WEBSOCKETPP_INCLUDE_DIRS} ${ASIO_INCLUDE_DIRS} ${BEAST_INCLUDE_DIRS}}
     ${MSGPACK_INCLUDE_DIRS} ${CRYPTOPP_INCLUDE_DIRS} ${JSON_INCLUDE_DIRS})
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${BEAST_INCLUDE_DIRS}
     ${CMAKE_CURRENT_BINARY_DIR} ${WEBSOCKETPP_INCLUDE_DIRS} ${ASIO_INCLUDE_DIRS}
     ${MSGPACK_INCLUDE_DIRS} ${CRYPTOPP_INCLUDE_DIRS} ${JSON_INCLUDE_DIRS})
 

@@ -1,13 +1,13 @@
 #ifndef JSON_SERIALIZER_H
 #define JSON_SERIALIZER_H
 
-#include "util/any.h"
 #include "util/adapters.h"
 #include "util/for_each_t.h"
 #include "symbols.h"
 #include <forward_list>
 #include <nlohmann/json.hpp>
 #include <cassert>
+#include <experimental/any>
 
 using namespace nlohmann;
 
