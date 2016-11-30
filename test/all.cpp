@@ -14,23 +14,10 @@
 
 int main()
 {
+    qflow::uri u("http://localhost.com/res?param=val&param2=val2");
     boost::asio::io_service io_service;
     qflow::http_server(io_service, "0.0.0.0", "1234", [&](auto req, auto res) {
-        qflow::uri url(req->url);
-        res->version = req->version;
-        if(url.contains_query_item("code"))
-        {
-            int i=0;
-        }
-        else
-        {
-            res->status = 303;
-            //res->reason = "Moved Permanently";
-            res->fields.insert("Server", "http_async_server");
-            res->fields.insert("Location", "https://www.facebook.com/v2.8/dialog/oauth?client_id=1067375046723087&redirect_uri=http://localhost:1234" + url.path());
-            //res->fields.insert("Content-Type", "text/html");
-            //res->body = "Hello";
-        }
+        
     })();
     io_service.run();
 

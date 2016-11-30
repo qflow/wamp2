@@ -12,28 +12,40 @@ class uri
 public:
     uri(const std::string& uri_str)
     {
-        std::stringstream ss(uri_str);
-        std::vector<std::string> parts;
-        std::string item;
+        auto i = uri_str.find("://");
 
-        while (std::getline(ss, item, '?'))
+        std::string str = uri_str;
+        if(i != std::string::npos)
         {
-            parts.push_back(item);
+            scheme_ = uri_str.substr(0, i);
+            str = str.erase(0, i + 3);
         }
-        path_ = parts[0];
-        if(parts.size() == 2)
+        i = str.find('?');
+        if(i != std::string::npos)
         {
-            query = parts[1];
-            std::stringstream query_ss(query);
+            query_ = str.substr(i + 1);
+            str = str.substr(0, i);
+        }
+        i = str.find('/');
+        if(i > 0)
+        {
+            host_ = str.substr(0, i);
+            str = str.erase(0, i);
+        }
+        path_ = str;
+        
+        if(query_.size() > 0)
+        {
+            std::stringstream query_ss(query_);
             std::string query_item;
-            while (std::getline(query_ss, query_item, ';'))
+            while (std::getline(query_ss, query_item, '&'))
             {
                 std::stringstream item_ss(query_item);
                 std::string s;
                 std::getline(item_ss, s, '=');
                 std::string first = s;
                 std::getline(item_ss, s, '=');
-                query_items[first] = s;
+                query_items_[first] = s;
             }
         }
         std::stringstream path_ss(path_);
@@ -45,20 +57,38 @@ public:
     }
     bool contains_query_item(const std::string& key) const
     {
-        return query_items.find( key ) != query_items.end();
+        return query_items_.find( key ) != query_items_.end();
     }
     std::string query_item_value(const std::string& key) const
     {
-        return query_items.at(key);
+        return query_items_.at(key);
     }
     std::string path() const
     {
         return path_;
     }
+    std::string host() const
+    {
+        return host_;
+    }
+    std::string scheme() const
+    {
+        return scheme_;
+    }
+    std::string url_no_query() const
+    {
+        return scheme_ + "://" + host_ + path_; 
+    }
+    std::string url_path_query() const
+    {
+        return path_ + "?" + query_;
+    }
 private:
+    std::string host_;
+    std::string scheme_;
     std::string path_;
-    std::string query;
-    std::unordered_map<std::string, std::string> query_items;
+    std::string query_;
+    std::unordered_map<std::string, std::string> query_items_;
     std::vector<std::string> path_items;
 };
 }

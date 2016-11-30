@@ -53,6 +53,8 @@ public:
                 
                 yield qflow::async_oauth2_authenticate(*request_, *socket_, *this);
                 
+                int i=0;
+                
                 
                 response_ = std::make_shared<resp_type>();
                 //handler_(request_, response_);
