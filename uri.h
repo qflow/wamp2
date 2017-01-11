@@ -1,8 +1,10 @@
 #ifndef URI_H
 #define URI_H
 
-#include <string>
+#include <cctype>
+#include <iomanip>
 #include <sstream>
+#include <string>
 #include <vector>
 #include <unordered_map>
 
@@ -33,7 +35,7 @@ public:
             str = str.erase(0, i);
         }
         path_ = str;
-        
+
         if(query_.size() > 0)
         {
             std::stringstream query_ss(query_);
@@ -77,11 +79,33 @@ public:
     }
     std::string url_no_query() const
     {
-        return scheme_ + "://" + host_ + path_; 
+        return scheme_ + "://" + host_ + path_;
     }
     std::string url_path_query() const
     {
         return path_ + "?" + query_;
+    }
+    static std::string url_encode(const std::string &value) {
+        std::ostringstream escaped;
+        escaped.fill('0');
+        escaped << std::hex;
+
+        for (std::string::const_iterator i = value.begin(), n = value.end(); i != n; ++i) {
+            std::string::value_type c = (*i);
+
+            // Keep alphanumeric and other accepted characters intact
+            if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+                escaped << c;
+                continue;
+            }
+
+            // Any other characters are percent-encoded
+            escaped << std::uppercase;
+            escaped << '%' << std::setw(2) << int((unsigned char) c);
+            escaped << std::nouppercase;
+        }
+
+        return escaped.str();
     }
 private:
     std::string host_;

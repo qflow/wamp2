@@ -12,11 +12,8 @@ using namespace nlohmann;
 namespace qflow {
 enum class oauth2_errors
 {
-    authorization_code_expired = 100,
-    invalid_verification_code_format = 101,
-    continue_required = 1201,
-    not_authenticated = 1101,
-    authenticated = 0
+    error = 2,
+    finished = 0
 };
 
 class oauth2_category_impl :
@@ -30,16 +27,10 @@ public:
     {
         switch(static_cast<oauth2_errors>(ev))
         {
-        case oauth2_errors::continue_required :
-            return "continue required";
-        case oauth2_errors::authenticated :
-            return "authenticated";
-        case oauth2_errors::not_authenticated :
-            return "not authenticated";
-        case oauth2_errors::authorization_code_expired :
-            return "This authorization code has expired.";
-        case oauth2_errors::invalid_verification_code_format:
-            return "Invalid verification code format";
+        case oauth2_errors::finished :
+            return "authentication finished";
+        case oauth2_errors::error :
+            return "error";
         }
         return "undefined";
     }
@@ -64,23 +55,53 @@ struct oauth2_details
 {
     std::string redirect_url;
     std::string code_exchange_url;
-
+    std::string inspect_url;
+};
+struct oauth2_result
+{
+    std::string access_token;
+    std::string user_id;
+    std::string error;
 };
 
 template<class CompletionToken, class RequestType>
 auto async_oauth2_authenticate(const RequestType& req,
                                boost::asio::ip::tcp::socket& sock, CompletionToken&& token)
 {
-    beast::async_completion<CompletionToken, void(boost::system::error_code)> completion(token);
+    beast::async_completion<CompletionToken, void(boost::system::error_code, oauth2_result)> completion(token);
     boost::asio::spawn(sock.get_io_service(),
                        [&sock, &req, handler = completion.handler](boost::asio::yield_context yield)
     {
-        qflow::uri url(req.url);
-        auto ec = make_error_code(oauth2_errors::authenticated);
+        auto ec = make_error_code(oauth2_errors::finished);
+        oauth2_result res;
+        RequestType new_req = req;
         try {
+            qflow::uri url(new_req.url);
+            std::string host = new_req.fields["Host"].to_string();
+            if(!url.contains_query_item("code"))
+            {
+                std::string redirect_uri = "http://" + host + new_req.url;
+                std::string redirect_uri_encoded = uri::url_encode(redirect_uri);
+                beast::http::response<beast::http::empty_body> res;
+                res.version = new_req.version;
+                res.status = 303;
+                res.fields.insert("Server", "http_async_server");
+                res.fields.insert("Location", "https://www.facebook.com/v2.8/dialog/oauth?client_id=1067375046723087&redirect_uri=" + redirect_uri);
+                beast::http::prepare(res);
+                beast::http::async_write(sock, res, yield);
+                
+                beast::streambuf sb;
+                beast::http::async_read(sock, sb, new_req, yield);
+                
+                url = uri(new_req.url);
+                host = new_req.fields["Host"].to_string();
+            }
+            
             if(url.contains_query_item("code"))
             {
-                std::string vurl_str = "https://graph.facebook.com/v2.8/oauth/access_token?client_id=1067375046723087&redirect_uri=http://localhost:1234/test/resource&client_secret=8be865cb794eb995acf8b01443116a3e&code=" + url.query_item_value("code");
+                std::string redirect_uri = "http://" + host + url.path();
+                std::string redirect_uri_encoded = uri::url_encode(redirect_uri);
+                std::string vurl_str = "https://graph.facebook.com/v2.8/oauth/access_token?client_id=1067375046723087&redirect_uri=http://" + host + new_req.url + "&client_secret=8be865cb794eb995acf8b01443116a3e&code=" + url.query_item_value("code");
 
                 beast::http::request<beast::http::empty_body> token_req;
                 token_req.method = "GET";
@@ -91,41 +112,26 @@ auto async_oauth2_authenticate(const RequestType& req,
                 auto err_it=parsed.find("error");
                 if(err_it != parsed.end())
                 {
-                    auto err = err_it.value();
-                    std::string message = err["message"];
-                    int code = err["code"];
-                    ec = make_error_code(static_cast<oauth2_errors>(code));
+                    res.error = token_res.body;
                 }
                 if(parsed.find("access_token") != parsed.end())
                 {
                     std::string access_token = parsed["access_token"];
                     std::string inspect_str = "https://graph.facebook.com/debug_token?input_token=" + access_token + "&access_token=1067375046723087|8be865cb794eb995acf8b01443116a3e";
                     auto details = async_send_request(inspect_str, token_req, sock.get_io_service(), yield);
-                    std::string me_str = "https://graph.facebook.com/v2.8/me?access_token=" + access_token;
-                    auto me = async_send_request(me_str, token_req, sock.get_io_service(), yield);
-                    int t=0;
-                    
+                    auto parsed = json::parse(details.body);
+                    auto data=parsed["data"];
+                    std::string user_id = data["user_id"]; 
+                    res.access_token = access_token;
+                    res.user_id = user_id;
                 }
-
-                int i=0;
-            }
-            else
-            {
-                beast::http::response<beast::http::empty_body> res;
-                res.version = req.version;
-                res.status = 303;
-                res.fields.insert("Server", "http_async_server");
-                res.fields.insert("Location", "https://www.facebook.com/v2.8/dialog/oauth?client_id=1067375046723087&redirect_uri=http://localhost:1234" + url.path());
-                beast::http::prepare(res);
-                beast::http::async_write(sock, res, yield);
-                ec = make_error_code(oauth2_errors::continue_required);
             }
         }
         catch (boost::system::system_error& e)
         {
             ec = e.code();
         }
-        boost::asio::asio_handler_invoke(std::bind(handler, ec), &handler);
+        boost::asio::asio_handler_invoke(std::bind(handler, ec, res), &handler);
     });
     return completion.result.get();
 }

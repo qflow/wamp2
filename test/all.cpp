@@ -16,7 +16,7 @@ int main()
 {
     qflow::uri u("http://localhost.com/res?param=val&param2=val2");
     boost::asio::io_service io_service;
-    qflow::http_server(io_service, "0.0.0.0", "1234")();
+    qflow::tcp_server<qflow::http_session>(io_service, "0.0.0.0", "1234")();
     io_service.run();
 
 

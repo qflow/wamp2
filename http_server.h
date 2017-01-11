@@ -23,7 +23,7 @@ public:
         : socket_(std::move(socket)), strand_(socket_.get_io_service())
     {
     }
-    void go()
+    void operator()()
     {
         auto self(shared_from_this());
         boost::asio::spawn(strand_,
@@ -34,13 +34,12 @@ public:
                 beast::streambuf sb;
                 req_type req;
                 beast::http::async_read(socket_, sb, req, yield);
-                qflow::async_oauth2_authenticate(req, socket_, yield);
+                auto details = qflow::async_oauth2_authenticate(req, socket_, yield);
+                int t = 0;
             }
             catch (boost::system::system_error& e)
             {
-                auto code = e.code();
-                auto m = code.message();
-                int t=0;
+                auto message = e.what();
             }
             socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
         });
@@ -50,10 +49,11 @@ private:
     boost::asio::io_service::strand strand_;
 };
 
-class http_server : boost::asio::coroutine
+template<typename session>
+class tcp_server : boost::asio::coroutine
 {
 public:
-    explicit http_server(boost::asio::io_service& io_service,
+    explicit tcp_server(boost::asio::io_service& io_service,
                          const std::string& address, const std::string& port) :
         address_(address), port_(port), io_service_(io_service)
     {
@@ -72,7 +72,7 @@ public:
                 boost::system::error_code ec;
                 tcp::socket socket(io_service_);
                 acceptor.async_accept(socket, yield[ec]);
-                if (!ec) std::make_shared<http_session>(std::move(socket))->go();
+                if (!ec) std::make_shared<session>(std::move(socket))->operator()();
             }
         });
     }
