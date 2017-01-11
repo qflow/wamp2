@@ -3,9 +3,9 @@ include(GenerateExportHeader)
 include(ExternalProject)
 project(wamp2)
 
-find_package(websocketpp QUIET)
-if(websocketpp_FOUND)
-else()
+#find_package(websocketpp QUIET)
+#if(websocketpp_FOUND)
+#else()
     ExternalProject_Add(
       websocketpp
       GIT_REPOSITORY "https://github.com/qflow/websocketpp.git"
@@ -21,7 +21,7 @@ else()
     if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         set(WEBSOCKETPP_LIBRARIES ${WEBSOCKETPP_LIBRARIES} ws2_32)
     endif()
-endif()
+#endif()
 add_definitions(${WEBSOCKETPP_DEFINITIONS})
 
 ExternalProject_Add(
