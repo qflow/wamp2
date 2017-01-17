@@ -1,0 +1,24 @@
+syntax = "proto3";
+message BasicAuthenticator {
+    string username = 1;
+    string password = 2;
+}
+message OAuth2Authenticator {
+}
+message Authenticator {
+    oneof impl {
+        BasicAuthenticator basic = 4;
+        OAuth2Authenticator oauth = 5;
+    }
+}
+message Mapping {
+    string source = 1;
+    string destination = 2;
+    repeated Authenticator authenticator = 3;
+}
+message Proxy {
+    string address = 1;
+    int32 port = 2;
+    repeated Mapping mapping = 3;
+}
+
