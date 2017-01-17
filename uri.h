@@ -83,7 +83,8 @@ public:
     }
     std::string url_path_query() const
     {
-        return path_ + "?" + query_;
+        if(query_.empty()) return path_;
+        else return path_ + "?" + query_;
     }
     static std::string url_encode(const std::string &value) {
         std::ostringstream escaped;

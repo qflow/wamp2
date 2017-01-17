@@ -2,11 +2,11 @@
 #define HTTP_SERVER_H
 
 #include "future_handler.h"
+#include "to_string.h"
 
 #include <boost/asio.hpp>
 #include <boost/asio/async_result.hpp>
 #include <string>
-#include <boost/array.hpp>
 #include <beast/http.hpp>
 #include <beast/core/placeholders.hpp>
 #include <beast/core/streambuf.hpp>
@@ -34,14 +34,24 @@ public:
                 beast::streambuf sb;
                 req_type req;
                 beast::http::async_read(socket_, sb, req, yield);
-                auto details = qflow::async_oauth2_authenticate(req, socket_, yield);
-                int t = 0;
+                dump(req);
+                
+                req.fields.erase("Connection");
+                req.fields.erase("Host");
+                auto resp = async_send_request("http://yt-dash-mse-test.commondatastorage.googleapis.com/media/feelings_vp9-20130806-247.webm", req, socket_.get_io_service(), yield);
+                dump(resp);
+                
+                //auto details = qflow::async_oauth2_authenticate(req, socket_, yield);
+                beast::http::async_write(socket_, resp, yield);
+                
+                int r = 0;
             }
             catch (boost::system::system_error& e)
             {
                 auto message = e.what();
+                std::cout << message << "\n\n";
             }
-            socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+            //socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
         });
     }
 private:

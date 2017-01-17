@@ -15,7 +15,7 @@ template<class CompletionToken, class RequestType>
 auto async_send_request(const std::string& url_str, const RequestType& req,
                         boost::asio::io_service& service, CompletionToken&& token)
 {
-    using ResponseType = beast::http::response<beast::http::string_body>;
+    using ResponseType = beast::http::response<beast::http::streambuf_body>;
     beast::async_completion<CompletionToken, void(boost::system::error_code, ResponseType)> completion(token);
     boost::asio::spawn(service,
                        [handler = completion.handler, &service, &req, url_str](boost::asio::yield_context yield)
@@ -32,7 +32,6 @@ auto async_send_request(const std::string& url_str, const RequestType& req,
             new_req.url = url.url_path_query();
             std::string host = url.host() +  ":" + boost::lexical_cast<std::string>(sock.remote_endpoint().port());
             new_req.fields.insert("Host", host);
-            new_req.fields.insert("User-Agent", "qflow");
             beast::http::prepare(new_req);
 
             if(url.scheme() == "https")
