@@ -6,7 +6,6 @@
 #include <boost/asio.hpp>
 #include <boost/asio/async_result.hpp>
 #include <string>
-#include <boost/array.hpp>
 #include <beast/http.hpp>
 #include <beast/core/placeholders.hpp>
 #include <beast/core/streambuf.hpp>
