@@ -111,7 +111,7 @@ file(GLOB DATABASE_SRCS
          ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 file(GLOB ProtoFiles "${CMAKE_CURRENT_SOURCE_DIR}/*.proto")
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${ProtoFiles})
+#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${ProtoFiles})
 message(STATUS ${PROTO_HDRS})
 add_library(${PROJECT_NAME} STATIC ${DATABASE_SRCS} ${PROTO_SRCS})
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:Clang>:-fmodules -fmodules-cache-path=${CMAKE_CURRENT_BINARY_DIR}/cache>)
