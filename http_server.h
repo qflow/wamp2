@@ -34,17 +34,41 @@ public:
                 beast::streambuf sb;
                 req_type req;
                 beast::http::async_read(socket_, sb, req, yield);
-                dump(req);
-                
+                std::cout << req;
+
                 req.fields.erase("Connection");
                 req.fields.erase("Host");
-                auto resp = async_send_request("http://yt-dash-mse-test.commondatastorage.googleapis.com/media/feelings_vp9-20130806-247.webm", req, socket_.get_io_service(), yield);
-                dump(resp);
-                
+                tcp::resolver r {socket_.get_io_service()};
+                tcp::socket sock {socket_.get_io_service()};
+                qflow::uri url("http://video.webmfiles.org/big-buck-bunny_trailer.webm");
+                auto i = r.async_resolve(tcp::resolver::query {url.host(), url.scheme()}, yield);
+                boost::asio::async_connect(sock, i, yield);
+                req.url = url.url_path_query();
+                std::string host = url.host() +  ":" + boost::lexical_cast<std::string>(sock.remote_endpoint().port());
+                req.fields.insert("Host", host);
+                beast::http::prepare(req);
+                beast::http::async_write(sock, req, yield);
+                beast::http::response_header header;
+                /*beast::http::async_read(sock, sb, header, yield);
+                std::ostringstream stream;
+                stream << header;
+                char data[1024];
+                int res = sock.async_read_some(boost::asio::buffer(data, 1024), yield);
+                //stream << std::string(data, res);
+                std::string ss = stream.str();
+                std::cout << std::string(data, res);
+                boost::asio::async_write(socket_, boost::asio::buffer(ss), yield);
+                std::cout << header;*/
+                char data[1024];
+                while(int res = sock.async_read_some(boost::asio::buffer(data, 1024), yield))
+                {
+                    boost::asio::async_write(socket_, boost::asio::buffer(data, res), yield);
+                }
+
                 //auto details = qflow::async_oauth2_authenticate(req, socket_, yield);
-                beast::http::async_write(socket_, resp, yield);
-                
-                int r = 0;
+                //beast::http::async_write(socket_, resp, yield);
+
+                int t = 0;
             }
             catch (boost::system::system_error& e)
             {
@@ -64,7 +88,7 @@ class tcp_server : boost::asio::coroutine
 {
 public:
     explicit tcp_server(boost::asio::io_service& io_service,
-                         const std::string& address, const std::string& port) :
+                        const std::string& address, const std::string& port) :
         address_(address), port_(port), io_service_(io_service)
     {
     }
