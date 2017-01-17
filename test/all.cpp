@@ -12,8 +12,24 @@
 #include <functional>
 #include <thread>
 
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include "proxy_config.pb.h"
+
 int main()
 {
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
+    Proxy proxy_config;
+    proxy_config.set_address("0.0.0.0");
+    Mapping* mapping1 = proxy_config.add_mapping();
+    mapping1->set_source("/source");
+    Mapping* mapping2 = proxy_config.add_mapping();
+    mapping2->set_source("/source");
+    
+    std::string out;
+    google::protobuf::TextFormat::PrintToString(proxy_config, &out);
+    
+    
     qflow::uri u("http://localhost.com/res?param=val&param2=val2");
     boost::asio::io_service io_service;
     qflow::tcp_server<qflow::http_session>(io_service, "0.0.0.0", "1234")();
@@ -47,5 +63,3 @@ int main()
     c.run();*/
     int r=0;
 }
-
-

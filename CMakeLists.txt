@@ -3,6 +3,8 @@ include(GenerateExportHeader)
 include(ExternalProject)
 project(wamp2)
 
+find_package(Protobuf REQUIRED)
+
 #find_package(websocketpp QUIET)
 #if(websocketpp_FOUND)
 #else()
@@ -107,19 +109,22 @@ file(GLOB DATABASE_SRCS
          RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
          ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
          ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+file(GLOB ProtoFiles "${CMAKE_CURRENT_SOURCE_DIR}/*.proto")
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-add_library(${PROJECT_NAME} STATIC ${DATABASE_SRCS})
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${ProtoFiles})
+message(STATUS ${PROTO_HDRS})
+add_library(${PROJECT_NAME} STATIC ${DATABASE_SRCS} ${PROTO_SRCS})
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:Clang>:-fmodules -fmodules-cache-path=${CMAKE_CURRENT_BINARY_DIR}/cache>)
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:MSVC>:/std:c++latest /await>)
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<CXX_COMPILER_ID:GNU>:-std=c++14>)
 link_directories(${CRYPTOPP_LIB_DIRS})
-target_link_libraries(${PROJECT_NAME} executors ${WEBSOCKETPP_LIBRARIES} ${CRYPTOPP_LIBRARY})
+target_link_libraries(${PROJECT_NAME} executors ${WEBSOCKETPP_LIBRARIES} ${CRYPTOPP_LIBRARY} ${PROTOBUF_LIBRARIES})
 add_dependencies(${PROJECT_NAME} executors websocketpp asio msgpack cryptopp json beast)
 generate_export_header(${PROJECT_NAME})
-include_directories(${WEBSOCKETPP_INCLUDE_DIRS} ${ASIO_INCLUDE_DIRS} ${BEAST_INCLUDE_DIRS}}
+include_directories(${WEBSOCKETPP_INCLUDE_DIRS} ${ASIO_INCLUDE_DIRS} ${BEAST_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIRS}
     ${MSGPACK_INCLUDE_DIRS} ${CRYPTOPP_INCLUDE_DIRS} ${JSON_INCLUDE_DIRS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${BEAST_INCLUDE_DIRS}
     ${CMAKE_CURRENT_BINARY_DIR} ${WEBSOCKETPP_INCLUDE_DIRS} ${ASIO_INCLUDE_DIRS}
-    ${MSGPACK_INCLUDE_DIRS} ${CRYPTOPP_INCLUDE_DIRS} ${JSON_INCLUDE_DIRS})
+    ${MSGPACK_INCLUDE_DIRS} ${CRYPTOPP_INCLUDE_DIRS} ${JSON_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIRS})
 
 
