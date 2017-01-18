@@ -4,7 +4,7 @@
 #include "websocket_transport.h"
 #include "router.h"
 #include "http_server.h"
-#include "uri.h"
+#include "translate.h"
 
 #include <unordered_map>
 #include <iostream>
@@ -12,27 +12,25 @@
 #include <functional>
 #include <thread>
 
-#include <google/protobuf/text_format.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-//#include "proxy_config.pb.h"
-
 int main()
 {
-    /*GOOGLE_PROTOBUF_VERIFY_VERSION;
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
     Proxy proxy_config;
     proxy_config.set_address("0.0.0.0");
-    Mapping* mapping1 = proxy_config.add_mapping();
-    mapping1->set_source("/source");
-    Mapping* mapping2 = proxy_config.add_mapping();
-    mapping2->set_source("/source");
+    proxy_config.set_port("1234");
+    (*proxy_config.mutable_uri_translations())["google"] = "http://www.google.com";
+    (*proxy_config.mutable_uri_translations())["buck"] = "http://video.webmfiles.org/big-buck-bunny_trailer.webm";
+    std::string s = translate("https://www.google.cz/?gfe_rd=cr&ei=zLt_WJbJB9Sv8wfi16uwCg", 
+                          *proxy_config.mutable_uri_translations());
     
     std::string out;
-    google::protobuf::TextFormat::PrintToString(proxy_config, &out);*/
+    google::protobuf::TextFormat::PrintToString(proxy_config, &out);
+    std::cout << out;
     
     
     qflow::uri u("http://localhost.com/res?param=val&param2=val2");
     boost::asio::io_service io_service;
-    qflow::tcp_server<qflow::http_session>(io_service, "0.0.0.0", "1234")();
+    qflow::tcp_server<qflow::http_session>(io_service, proxy_config.address(), proxy_config.port())(proxy_config);
     io_service.run();
 
 
