@@ -21,7 +21,7 @@ int main()
     (*proxy_config.mutable_uri_translations())["google(.*)"] = "http://www.google.com/<1>";
     (*proxy_config.mutable_uri_translations())["buck"] = "http://video.webmfiles.org/big-buck-bunny_trailer.webm";
     std::string s = translate("google?gfe_rd=cr&ei=zLt_WJbJB9Sv8wfi16uwCg", 
-                          *proxy_config.mutable_uri_translations());
+                          proxy_config.uri_translations());
     
     std::string out;
     google::protobuf::TextFormat::PrintToString(proxy_config, &out);
