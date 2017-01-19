@@ -18,6 +18,9 @@ std::string translate(std::string input, Map map)
                 {
                     std::ssub_match sub_match = match[i];
                     std::string str = sub_match.str();
+                    std::string mark = '<' + std::to_string(i) + '>';
+                    auto pos = output.find(mark);
+                    if(pos != -1) output.replace(pos, mark.size(), str);
                 }
             }
             return output;
