@@ -5,12 +5,14 @@
 #include "router.h"
 #include "http_server.h"
 #include "translate.h"
+#include "wamp_router.h"
 
 #include <unordered_map>
 #include <iostream>
 #include <cassert>
 #include <functional>
 #include <thread>
+#include <boost/thread/thread.hpp>
 
 int main()
 {
@@ -20,18 +22,31 @@ int main()
     proxy_config.set_port("1234");
     (*proxy_config.mutable_uri_translations())["google"] = "http://www.google.com";
     (*proxy_config.mutable_uri_translations())["buck"] = "http://video.webmfiles.org/big-buck-bunny_trailer.webm";
-    std::string s = translate("https://www.google.cz/?gfe_rd=cr&ei=zLt_WJbJB9Sv8wfi16uwCg", 
-                          *proxy_config.mutable_uri_translations());
-    
+    std::string s = translate("https://www.google.cz/?gfe_rd=cr&ei=zLt_WJbJB9Sv8wfi16uwCg",
+                              *proxy_config.mutable_uri_translations());
+
+
+
     std::string out;
     google::protobuf::TextFormat::PrintToString(proxy_config, &out);
     std::cout << out;
-    
-    
-    qflow::uri u("http://localhost.com/res?param=val&param2=val2");
+
+
+    boost::thread_group threadpool;
     boost::asio::io_service io_service;
+    boost::asio::io_service::work work(io_service);
+    for(int i=0; i<10; i++)
+    {
+        threadpool.create_thread(
+            boost::bind(&boost::asio::io_service::run, &io_service)
+        );
+    }
+
     qflow::tcp_server<qflow::http_session>(io_service, proxy_config.address(), proxy_config.port())(proxy_config);
-    io_service.run();
+    qflow::wamp_router(io_service, "0.0.0.0", "5555")();
+    
+    
+    threadpool.join_all();
 
 
     /*qflow::client c;

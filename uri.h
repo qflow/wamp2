@@ -73,9 +73,21 @@ public:
     {
         return host_;
     }
+    void set_host(const std::string& val)
+    {
+        host_ = val;
+    }
     std::string scheme() const
     {
         return scheme_;
+    }
+    void set_scheme(const std::string& val)
+    {
+        scheme_ = val;
+    }
+    std::string url() const
+    {
+        return url_no_query() + "?" + query_;
     }
     std::string url_no_query() const
     {
@@ -85,6 +97,10 @@ public:
     {
         if(query_.empty()) return path_;
         else return path_ + "?" + query_;
+    }
+    bool is_absolute() const
+    {
+        return !scheme_.empty() && !host_.empty();
     }
     static std::string url_encode(const std::string &value) {
         std::ostringstream escaped;

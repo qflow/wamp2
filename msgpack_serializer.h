@@ -14,25 +14,6 @@
 using std::experimental::any;
 using std::experimental::any_cast;
 
-template <typename T>
-struct map_traits
-{};
-template<typename Key, typename... Value>
-struct map_traits<std::tuple<std::pair<Key, Value>...>>
-{
-    static constexpr bool is_map = true;
-};
-
-template <typename T>
-struct tuple_traits
-{};
-
-template<typename... T>
-struct tuple_traits<std::tuple<T...>>
-{
-    static constexpr bool is_tuple = true;
-};
-
 
 namespace msgpack {
 MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
@@ -116,6 +97,14 @@ struct pack<std::unordered_map<std::string, any>> {
             o.pack(n.first);
             o.pack(n.second);
         }
+        return o;
+    }
+};
+template<>
+struct pack<empty> {
+    template <typename Stream>
+    packer<Stream>& operator()(msgpack::packer<Stream>& o, empty) const {
+        o.pack(msgpack::object());
         return o;
     }
 };
@@ -297,6 +286,15 @@ struct adapter<msgpack::object, qflow::WampMsgCode>
     static msgpack::object convert(qflow::WampMsgCode code)
     {
         return msgpack::object(static_cast<int>(code));
+    }
+};
+template<>
+struct adapter<msgpack::object, empty>
+{
+    static msgpack::object convert(empty)
+    {
+        msgpack::object o;
+        return o;
     }
 };
 template<>
