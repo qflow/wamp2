@@ -17,7 +17,7 @@
 
 namespace qflow {
 
-   
+
 template<typename NextStream>
 class wamp_stream
 {
@@ -72,22 +72,24 @@ private:
     NextStream next_;
 };
 
-struct identity
+struct protocol
 {
-    template<class Body, class Fields>
-    void
-    operator()(beast::http::message<true, Body, Fields>& req)
+    std::string str;
+    protocol(const std::string& s) : str(s)
     {
-        req.fields.insert("Sec-WebSocket-Protocol", KEY_WAMP_MSGPACK_SUB);
+    }
+    template<class Body, class Fields>
+    void operator()(beast::http::message<true, Body, Fields>& req)
+    {
+        req.fields.insert("Sec-WebSocket-Protocol", str);
     }
 
     template<class Body, class Fields>
-    void
-    operator()(beast::http::message<false, Body, Fields>& res)
+    void operator()(beast::http::message<false, Body, Fields>& res)
     {
-        int t=0;
     }
 };
+
 class wamp_server_session : public std::enable_shared_from_this<wamp_server_session>
 {
 public:
@@ -113,7 +115,7 @@ public:
                 stream_type ssl_stream {sock, ctx};
                 ssl_stream.async_handshake(boost::asio::ssl::stream_base::client, yield);
                 beast::websocket::stream<stream_type&> ws {ssl_stream};
-                ws.set_option(beast::websocket::decorate(identity {}));
+                ws.set_option(beast::websocket::decorate(protocol {KEY_WAMP_MSGPACK_SUB}));
                 ws.set_option(beast::websocket::message_type {beast::websocket::opcode::binary});
                 ws.async_handshake(host, "/ws",yield);
                 wamp_stream<beast::websocket::stream<stream_type&>&> wamp {ws};
