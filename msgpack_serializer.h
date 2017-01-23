@@ -104,7 +104,7 @@ template<>
 struct pack<empty> {
     template <typename Stream>
     packer<Stream>& operator()(msgpack::packer<Stream>& o, empty) const {
-        o.pack(msgpack::object());
+        o.pack_map(0);
         return o;
     }
 };
@@ -288,15 +288,7 @@ struct adapter<msgpack::object, qflow::WampMsgCode>
         return msgpack::object(static_cast<int>(code));
     }
 };
-template<>
-struct adapter<msgpack::object, empty>
-{
-    static msgpack::object convert(empty)
-    {
-        msgpack::object o;
-        return o;
-    }
-};
+
 template<>
 struct adapter<unsigned long long, any>
 {
