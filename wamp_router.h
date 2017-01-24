@@ -235,7 +235,7 @@ private:
                     pending_requests_.erase(iter);
                     boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
                 }
-                else if(code == WampMsgCode::SUBSCRIBED || code == WampMsgCode::REGISTERED)
+                else if(code == WampMsgCode::SUBSCRIBED || code == WampMsgCode::WAMP_REGISTERED)
                 {
                     requestId = adapters::as<id_type>(arr[1]);
                     auto iter = pending_requests_.find(requestId);
@@ -302,7 +302,7 @@ public:
                 wamp_stream<beast::websocket::stream<stream_type&>&, msgpack_serializer> wamp {ws};
                 wamp.async_handshake("realm1", yield);
                 wamp.async_subscribe("test.add", yield);
-                wamp.async_register("test.add", []() {}, yield);
+                //wamp.async_register("test.add", []() {}, yield);
                 auto res = wamp.async_call("test.add", yield, 1, 2);
 
                 int t=0;
