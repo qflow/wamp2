@@ -100,7 +100,8 @@ public:
         {
             boost::system::error_code ec;
             try {
-                auto roles = std::make_tuple(std::make_pair("caller", empty()), std::make_pair("subscriber", empty()));
+                auto roles = std::make_tuple(std::make_pair("caller", empty()), std::make_pair("subscriber", empty()), 
+                    std::make_pair("callee", empty()), std::make_pair("publisher", empty()));
                 auto details = std::make_tuple(std::make_pair("roles", roles));
                 auto msg = std::make_tuple(WampMsgCode::HELLO, realm, details);
                 Serializer s;
@@ -147,7 +148,6 @@ public:
                 auto message = e.what();
             }
         });
-        //listen();
         return completion.result.get();
     }
     template<class CompletionToken, typename... Args>
@@ -249,6 +249,30 @@ public:
         });
         return completion.result.get();
     }
+    template<class CompletionToken, typename... Args>
+    auto async_publish(const std::string& uri, CompletionToken&& token, Args... args)
+    {
+        auto argsTuple = std::make_tuple(args...);
+        beast::async_completion<CompletionToken, void(boost::system::error_code)> completion(token);
+        id_type requestId = random::generate();
+        auto msg = std::make_tuple(WampMsgCode::PUBLISH, requestId, empty(), uri, argsTuple);
+        boost::asio::spawn(next_.get_io_service(),
+                           [this, requestId, msg, handler = completion.handler](boost::asio::yield_context yield)
+        {
+            boost::system::error_code ec;
+            try {
+                auto arr = async_send_receive(requestId, msg, yield);
+                WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
+                if(code != WampMsgCode::PUBLISHED) ec = make_error_code(wamp_errors::error);
+            }
+            catch (boost::system::system_error& e)
+            {
+                ec = e.code();
+            }
+            boost::asio::asio_handler_invoke(std::bind(handler, ec), &handler);
+        });
+        return completion.result.get();
+    }
 
 private:
     NextStream next_;
@@ -283,7 +307,8 @@ private:
                     pending_requests_.erase(iter);
                     boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
                 }
-                else if(code == WampMsgCode::SUBSCRIBED || code == WampMsgCode::WAMP_REGISTERED || code == WampMsgCode::UNREGISTERED)
+                else if(code == WampMsgCode::SUBSCRIBED || code == WampMsgCode::WAMP_REGISTERED 
+                    || code == WampMsgCode::UNREGISTERED || code == WampMsgCode::PUBLISHED)
                 {
                     requestId = adapters::as<id_type>(arr[1]);
                     auto iter = pending_requests_.find(requestId);
@@ -351,9 +376,10 @@ public:
                 ws.async_handshake(host, "/ws",yield);
                 wamp_stream<beast::websocket::stream<stream_type&>&, msgpack_serializer> wamp {ws};
                 wamp.async_handshake("realm1", yield);
-                //wamp.async_subscribe("test.add", yield);
-                auto reg = wamp.async_register("test.add", []() {}, yield);
-                wamp.async_unregister(reg, yield);
+                wamp.async_subscribe("test.topic", yield);
+                //auto reg = wamp.async_register("test.add", []() {}, yield);
+                //wamp.async_unregister(reg, yield);
+                wamp.async_publish("test.topic", yield, "ahoj");
                 //auto res = wamp.async_call("test.add2", yield, 1, 2);
 
                 int t=0;
