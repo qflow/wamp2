@@ -229,23 +229,25 @@ public:
     template<class CompletionToken>
     auto async_subscribe(const std::string uri, CompletionToken&& token)
     {
-        beast::async_completion<CompletionToken, void(boost::system::error_code)> completion(token);
+        beast::async_completion<CompletionToken, void(boost::system::error_code, id_type)> completion(token);
         boost::asio::spawn(next_.get_io_service(),
                            [this, uri, handler = completion.handler](boost::asio::yield_context yield)
         {
             boost::system::error_code ec;
+            id_type subscription_id;
             try {
                 id_type requestId = random::generate();
                 auto msg = std::make_tuple(WampMsgCode::SUBSCRIBE, requestId, empty(), uri);
                 auto arr = async_send_receive(requestId, msg, yield);
                 WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
-                if(code != WampMsgCode::SUBSCRIBED) ec = make_error_code(wamp_errors::error);
+                if(code == WampMsgCode::SUBSCRIBED) subscription_id = adapters::as<id_type>(arr[2]);
+                else ec = make_error_code(wamp_errors::error);
             }
             catch (boost::system::system_error& e)
             {
                 ec = e.code();
             }
-            boost::asio::asio_handler_invoke(std::bind(handler, ec), &handler);
+            boost::asio::asio_handler_invoke(std::bind(handler, ec, subscription_id), &handler);
         });
         return completion.result.get();
     }
@@ -376,7 +378,7 @@ public:
                 ws.async_handshake(host, "/ws",yield);
                 wamp_stream<beast::websocket::stream<stream_type&>&, msgpack_serializer> wamp {ws};
                 wamp.async_handshake("realm1", yield);
-                wamp.async_subscribe("test.topic", yield);
+                auto sub_id = wamp.async_subscribe("test.topic", yield);
                 //auto reg = wamp.async_register("test.add", []() {}, yield);
                 //wamp.async_unregister(reg, yield);
                 wamp.async_publish("test.topic", yield, "ahoj");
