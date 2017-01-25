@@ -23,7 +23,8 @@ enum class wamp_errors
 {
     error = 2,
     not_authorized = 3,
-    no_such_procedure = 4
+    no_such_procedure = 4,
+    procedure_already_exists = 5
 };
 
 class wamp_category_impl :
@@ -43,9 +44,15 @@ public:
             return "wamp.error.not_authorized";
         case wamp_errors::no_such_procedure:
             return "wamp.error.no_such_procedure";
+        case wamp_errors::procedure_already_exists:
+            return "wamp.error.procedure_already_exists";
         }
         return "undefined";
     }
+};
+struct registration
+{
+    id_type registration_id;
 };
 static const boost::system::error_category& wamp_category = qflow::wamp_category_impl();
 boost::system::error_code make_error_code(qflow::wamp_errors e)
@@ -59,21 +66,25 @@ boost::system::error_code make_error_code(const std::string& str)
         return make_error_code(wamp_errors::not_authorized);
     else if(str == "wamp.error.no_such_procedure")
         return make_error_code(wamp_errors::no_such_procedure);
+    else if(str == "wamp.error.procedure_already_exists")
+        return make_error_code(wamp_errors::procedure_already_exists);
 
+    std::cout << "Unhandled wamp error: " + str;
     return make_error_code(wamp_errors::error);
 }
 
 template<typename NextStream, typename Serializer>
-class wamp_stream
+class wamp_stream : public std::enable_shared_from_this<wamp_stream<NextStream, Serializer>>
 {
 public:
-    wamp_stream(NextStream next) : next_(next)
+    wamp_stream(NextStream next) : next_(next), strand_(next.get_io_service())
     {
 
     }
     ~wamp_stream()
     {
-
+        is_alive_ = false;
+        int t=0;
     }
     template<class CompletionToken>
     auto async_handshake(const std::string& realm, CompletionToken&& token)
@@ -98,7 +109,8 @@ public:
                 using array = std::vector<typename Serializer::variant_type>;
                 array arr = adapters::as<array>(m);
                 WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
-                if(code != WampMsgCode::WELCOME) ec = make_error_code(wamp_errors::error);
+                if(code == WampMsgCode::WELCOME) listen();
+                else ec = make_error_code(wamp_errors::error);
             }
             catch (boost::system::system_error& e)
             {
@@ -119,12 +131,11 @@ public:
         std::string str = s.serialize(msg);
         response_completion completion(token);
         pending_requests_.insert({requestId, completion.handler});
-        boost::asio::spawn(next_.get_io_service(),
+        boost::asio::spawn(token,
                            [this, str](boost::asio::yield_context yield)
         {
             try {
                 next_.async_write(boost::asio::buffer(str), yield);
-                listen();
             }
             catch(boost::system::system_error& e)
             {
@@ -162,23 +173,28 @@ public:
     template<class CompletionToken, class Callable>
     auto async_register(const std::string uri, Callable&& c, CompletionToken&& token)
     {
-        beast::async_completion<CompletionToken, void(boost::system::error_code)> completion(token);
+        beast::async_completion<CompletionToken, void(boost::system::error_code, id_type)> completion(token);
         boost::asio::spawn(next_.get_io_service(),
                            [this, uri, handler = completion.handler](boost::asio::yield_context yield)
         {
             boost::system::error_code ec;
+            id_type registration_id;
             try {
                 id_type requestId = random::generate();
                 auto msg = std::make_tuple(WampMsgCode::REGISTER, requestId, empty(), uri);
                 auto arr = async_send_receive(requestId, msg, yield);
                 WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
-                if(code != WampMsgCode::WAMP_REGISTERED) ec = make_error_code(wamp_errors::error);
+                if(code == WampMsgCode::WAMP_REGISTERED) 
+                {
+                    registration_id = adapters::as<id_type>(arr[2]);
+                }
+                else ec = make_error_code(wamp_errors::error);
             }
             catch (boost::system::system_error& e)
             {
                 ec = e.code();
             }
-            boost::asio::asio_handler_invoke(std::bind(handler, ec), &handler);
+            boost::asio::asio_handler_invoke(std::bind(handler, ec, registration_id), &handler);
         });
         return completion.result.get();
     }
@@ -209,15 +225,19 @@ public:
 private:
     NextStream next_;
     std::unordered_map<id_type, const handler_type> pending_requests_;
+    boost::asio::io_service::strand strand_;
+    bool is_alive_ = true;
     void listen()
     {
-        boost::asio::spawn(next_.get_io_service(),
+        if(!is_alive_) return;
+        boost::asio::spawn(strand_,
                            [this](boost::asio::yield_context yield)
         {
             try {
                 Serializer s;
                 beast::streambuf sb;
                 beast::websocket::opcode op;
+                int i=0;
                 next_.async_read(op, sb, yield);
                 auto m = s.deserialize(beast::to_string(sb.data()));
                 using map = std::unordered_map<std::string, variant_type>;
@@ -243,12 +263,14 @@ private:
                     pending_requests_.erase(iter);
                     boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
                 }
+                listen();
             }
             catch(boost::system::system_error& e)
             {
                 auto message = e.what();
                 //std::cout << message << "\n\n";
             }
+            //}
         });
     }
 };
@@ -302,8 +324,8 @@ public:
                 wamp_stream<beast::websocket::stream<stream_type&>&, msgpack_serializer> wamp {ws};
                 wamp.async_handshake("realm1", yield);
                 wamp.async_subscribe("test.add", yield);
-                //wamp.async_register("test.add", []() {}, yield);
-                auto res = wamp.async_call("test.add", yield, 1, 2);
+                auto reg = wamp.async_register("test.add", []() {}, yield);
+                auto res = wamp.async_call("test.add2", yield, 1, 2);
 
                 int t=0;
 

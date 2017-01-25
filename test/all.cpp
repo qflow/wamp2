@@ -40,6 +40,39 @@ int main()
 
     qflow::tcp_server<qflow::http_session>(io_service, proxy_config.address(), proxy_config.port())(proxy_config);
     qflow::wamp_router(io_service, "0.0.0.0", "5555")();
+    /*boost::asio::spawn(io_service,
+                           [&](boost::asio::yield_context yield)
+        {
+            try
+            {
+                std::string const host = "127.0.0.1";//demo.crossbar.io
+                boost::asio::ip::tcp::resolver r {io_service};
+                boost::asio::ip::tcp::socket sock {io_service};
+                auto i = r.async_resolve(boost::asio::ip::tcp::resolver::query {host, "8080"}, yield);
+                boost::asio::async_connect(sock, i, yield);
+                //boost::asio::ssl::context ctx {boost::asio::ssl::context::sslv23};
+                using stream_type = boost::asio::ip::tcp::socket;
+                //tream_type ssl_stream {sock, ctx};
+                //ssl_stream.async_handshake(boost::asio::ssl::stream_base::client, yield);
+                beast::websocket::stream<stream_type&> ws {sock};
+                ws.set_option(beast::websocket::decorate(qflow::protocol {qflow::KEY_WAMP_MSGPACK_SUB}));
+                ws.set_option(beast::websocket::message_type {beast::websocket::opcode::binary});
+                ws.async_handshake(host, "/ws",yield);
+                qflow::wamp_stream<beast::websocket::stream<stream_type&>&, qflow::msgpack_serializer> wamp {ws};
+                wamp.async_handshake("realm1", yield);
+                wamp.async_subscribe("test.add", yield);
+                wamp.async_register("test.add", []() {}, yield);
+                auto res = wamp.async_call("test.add2", yield, 1, 2);
+
+                int t=0;
+
+            }
+            catch (boost::system::system_error& e)
+            {
+                auto message = e.what();
+                std::cout << message << "\n\n";
+            }
+        });*/
     
     
     threadpool.join_all();
