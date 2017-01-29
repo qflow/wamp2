@@ -271,6 +271,21 @@ struct adapter<any, std::tuple<T...>>
         return any(list);
     }
 };
+template<typename... T>
+struct adapter<std::tuple<T...>, std::vector<msgpack::object>>
+{
+    static std::tuple<T...> convert(std::vector<msgpack::object> v)
+    {
+        using Tuple = std::tuple<T...>;
+        Tuple t;
+        auto res = for_each_t(t, [v, &t](auto idx, auto element){
+            auto value = adapters::as<decltype(element)>(v[idx]);
+            std::get<idx>(t) = value;
+            return 0;
+        });
+        return t;
+    }
+};
 template<>
 struct adapter<any, std::shared_ptr<msgpack::object_handle>>
 {
