@@ -70,10 +70,15 @@ int main()
                 qflow::wamp_stream<beast::websocket::stream<stream_type&>&, qflow::msgpack_serializer> wamp2 {ws2};
                 wamp2.async_handshake("realm1", yield);
                 
-                qflow::id_type sub_id = wamp.async_subscribe("test.add", yield);
-                wamp2.async_publish("test.add", false, yield, "ahoj");
+                qflow::id_type sub_id = wamp.async_subscribe("test.ev", yield);
+                wamp2.async_publish("test.ev", false, yield, "ahoj");
                 auto ev = wamp.async_receive_event<std::tuple<std::string>>(sub_id, yield);
-                //wamp.async_register("test.add", []() {}, yield);
+                qflow::id_type reg_id = wamp.async_register("test.add", yield);
+                boost::asio::spawn(io_service,
+                           [&](boost::asio::yield_context yield)
+                {
+                    auto args = wamp.async_receive_invocation<std::tuple<int, int>>(reg_id, yield);
+                });
                 //auto res = wamp.async_call("test.add2", yield, 1, 2);
 
                 int t=0;

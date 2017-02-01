@@ -151,8 +151,8 @@ public:
         });
         return completion.result.get();
     }
-    template<class CompletionToken, class Callable>
-    auto async_register(const std::string uri, Callable&& c, CompletionToken&& token)
+    template<class CompletionToken>
+    auto async_register(const std::string uri, CompletionToken&& token)
     {
         beast::async_completion<CompletionToken, void(boost::system::error_code, id_type)> completion(token);
         boost::asio::spawn(next_.get_io_service(),
@@ -305,6 +305,29 @@ public:
                 ec = e.code();
             }
             boost::asio::asio_handler_invoke(std::bind(handler, ec, res), &handler);
+        });
+        return completion.result.get();
+    }
+    template<class Args, class CompletionToken>
+    auto async_receive_invocation(id_type registration_id, CompletionToken&& token)
+    {
+        beast::async_completion<CompletionToken, void(boost::system::error_code, Args)> completion(token);
+        boost::asio::spawn(next_.get_io_service(),
+                           [this, registration_id, handler = completion.handler](boost::asio::yield_context yield)
+        {
+            boost::system::error_code ec;
+            Args args;
+            try {
+                auto msg = async_receive(registration_id, yield);
+                auto arr = msg[4];
+                auto vec = adapters::as<std::vector<msgpack::object>>(arr);
+                args = adapters::as<Args>(vec);
+            }
+            catch (boost::system::system_error& e)
+            {
+                ec = e.code();
+            }
+            boost::asio::asio_handler_invoke(std::bind(handler, ec, args), &handler);
         });
         return completion.result.get();
     }
