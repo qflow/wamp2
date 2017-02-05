@@ -127,9 +127,58 @@ public:
         });
         return completion.result.get();
     }
-
-    template<class Result, class CompletionToken, typename... Args>
+    template<class CompletionToken, typename... Args>
     auto async_call(const std::string& uri, CompletionToken&& token, Args... args)
+    {
+        beast::async_completion<CompletionToken, void(boost::system::error_code, id_type)> completion(token);
+        auto argsTuple = std::make_tuple(args...);
+        id_type requestId = random::generate();
+        auto options = std::make_tuple(std::make_pair("receive_progress", true));
+        auto msg = std::make_tuple(WampMsgCode::CALL, requestId, options, uri, argsTuple);
+        boost::asio::spawn(next_.get_io_service(),
+                           [this, requestId, msg, handler = completion.handler](boost::asio::yield_context yield)
+        {
+            boost::system::error_code ec;
+            id_type res;
+            try {
+                Serializer s;
+                std::string str = s.serialize(msg);
+                next_.async_write(boost::asio::buffer(str), yield);
+                res = requestId;
+            }
+            catch (boost::system::system_error& e)
+            {
+                ec = e.code();
+            }
+            boost::asio::asio_handler_invoke(std::bind(handler, ec, res), &handler);
+        });
+        return completion.result.get();
+    }
+    template<class Result, class CompletionToken>
+    auto async_receive_result(id_type call_id, CompletionToken&& token)
+    {
+        beast::async_completion<CompletionToken, void(boost::system::error_code, Result)> completion(token);
+        boost::asio::spawn(next_.get_io_service(),
+                           [this, call_id, handler = completion.handler](boost::asio::yield_context yield)
+        {
+            boost::system::error_code ec;
+            Result res;
+            try {
+                auto msg = async_receive(call_id, yield);
+                auto arr = msg[3];
+                auto vec = adapters::as<std::vector<msgpack::object>>(arr);
+                res = adapters::as<Result>(vec);
+            }
+            catch (boost::system::system_error& e)
+            {
+                ec = e.code();
+            }
+            boost::asio::asio_handler_invoke(std::bind(handler, ec, res), &handler);
+        });
+        return completion.result.get();
+    }
+    template<class Result, class CompletionToken, typename... Args>
+    auto async_call_complete(const std::string& uri, CompletionToken&& token, Args... args)
     {
         beast::async_completion<CompletionToken, void(boost::system::error_code, Result)> completion(token);
         auto argsTuple = std::make_tuple(args...);

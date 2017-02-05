@@ -83,7 +83,7 @@ int main()
                     }, yield2);
                     int t=0;
                 });
-                auto res = wamp2.async_call<std::tuple<int>>("test.add", yield, 1, 2);
+                auto res = wamp2.async_call_complete<std::tuple<int>>("test.add", yield, 1, 2);
                 int t=0;
 
             }
