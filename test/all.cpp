@@ -13,6 +13,7 @@
 #include <functional>
 #include <thread>
 #include <boost/thread/thread.hpp>
+#include <boost/asio/use_future.hpp>
 
 int main()
 {
@@ -31,7 +32,7 @@ int main()
     boost::thread_group threadpool;
     boost::asio::io_service io_service;
     boost::asio::io_service::work work(io_service);
-    for(int i=0; i<10; i++)
+    for(int i=0; i<4; i++)
     {
         threadpool.create_thread(
             boost::bind(&boost::asio::io_service::run, &io_service)
@@ -75,16 +76,18 @@ int main()
                 auto ev = wamp.async_receive_event<std::tuple<std::string>>(sub_id, yield);
                 qflow::id_type reg_id = wamp.async_register("test.add", yield);
                 boost::asio::spawn(io_service,
-                           [&](boost::asio::yield_context yield)
+                           [&](boost::asio::yield_context yield2)
                 {
-                    auto args = wamp.async_receive_invocation<std::tuple<int, int>>(reg_id, yield);
+                    wamp.async_handle_invocation(reg_id, [](int a, int b){
+                        return a + b;
+                    }, yield2);
+                    int t=0;
                 });
-                //auto res = wamp.async_call("test.add2", yield, 1, 2);
-
+                auto res = wamp2.async_call<std::tuple<int>>("test.add", yield, 1, 2);
                 int t=0;
 
             }
-            catch (boost::system::system_error& e)
+            catch (const std::exception& e)
             {
                 auto message = e.what();
                 std::cout << message << "\n\n";

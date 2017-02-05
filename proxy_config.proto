@@ -1,4 +1,6 @@
 syntax = "proto3";
+option cc_generic_services = true;
+
 message BasicAuthenticator {
     string username = 1;
     string password = 2;
@@ -15,5 +17,13 @@ message Proxy {
     string address = 1;
     string port = 2;
     map<string, string> uri_translations = 3;
+}
+
+message TestRequest {
+}
+message TestResponse {
+}
+service TestService {
+  rpc Search (TestRequest) returns (TestResponse);
 }
 

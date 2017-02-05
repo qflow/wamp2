@@ -16,6 +16,7 @@
 #include "json_serializer.h"
 #include "msgpack_serializer.h"
 #include "symbols.h"
+#include "util/functor.h"
 
 namespace qflow {
 
@@ -90,6 +91,7 @@ public:
     {
         is_alive_ = false;
     }
+    wamp_stream(const wamp_stream&) = delete;
     template<class CompletionToken>
     auto async_handshake(const std::string& realm, CompletionToken&& token)
     {
@@ -114,7 +116,7 @@ public:
                 using array = std::vector<typename Serializer::variant_type>;
                 array arr = adapters::as<array>(m);
                 WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
-                if(code != WampMsgCode::WELCOME) 
+                if(code != WampMsgCode::WELCOME)
                     ec = make_error_code(wamp_errors::error);
             }
             catch (boost::system::system_error& e)
@@ -126,10 +128,10 @@ public:
         return completion.result.get();
     }
 
-    template<class CompletionToken, typename... Args>
+    template<class Result, class CompletionToken, typename... Args>
     auto async_call(const std::string& uri, CompletionToken&& token, Args... args)
     {
-        response_completion completion(token);
+        beast::async_completion<CompletionToken, void(boost::system::error_code, Result)> completion(token);
         auto argsTuple = std::make_tuple(args...);
         id_type requestId = random::generate();
         auto msg = std::make_tuple(WampMsgCode::CALL, requestId, empty(), uri, argsTuple);
@@ -137,10 +139,10 @@ public:
                            [this, requestId, msg, handler = completion.handler](boost::asio::yield_context yield)
         {
             boost::system::error_code ec;
-            array res;
+            Result res;
             try {
-                res = async_send_receive(requestId, msg, yield);
-                int t=0;
+                auto outmsg = async_send_receive(requestId, msg, yield);
+                res = adapters::as<Result>(outmsg[3]);
 
             }
             catch (boost::system::system_error& e)
@@ -308,37 +310,37 @@ public:
         });
         return completion.result.get();
     }
-    template<class Args, class CompletionToken>
-    auto async_receive_invocation(id_type registration_id, CompletionToken&& token)
+    template<class Callable, class CompletionToken>
+    auto async_handle_invocation(id_type registration_id, Callable&& func, CompletionToken&& token)
     {
-        beast::async_completion<CompletionToken, void(boost::system::error_code, Args)> completion(token);
+        beast::async_completion<CompletionToken, void(boost::system::error_code)> completion(std::forward<CompletionToken>(token));
         boost::asio::spawn(next_.get_io_service(),
-                           [this, registration_id, handler = completion.handler](boost::asio::yield_context yield)
+                           [this, registration_id, &func, handler = completion.handler](boost::asio::yield_context yield)
         {
             boost::system::error_code ec;
-            Args args;
             try {
                 auto msg = async_receive(registration_id, yield);
+                id_type requestId = adapters::as<id_type>(msg[1]);
                 auto arr = msg[4];
-                auto vec = adapters::as<std::vector<msgpack::object>>(arr);
-                args = adapters::as<Args>(vec);
+                auto vec = adapters::as<std::vector<variant_type>>(arr);
+                functor_impl<variant_type, Callable> functor(std::forward<Callable>(func));
+                auto res = functor.invoke(vec);
+                auto outmsg = std::make_tuple(WampMsgCode::YIELD, requestId, empty(), std::make_tuple(res));
+                Serializer s;
+                std::string str = s.serialize(outmsg);
+                std::cout << str;
+                next_.async_write(boost::asio::buffer(str), yield);
+                int y=0;
             }
             catch (boost::system::system_error& e)
             {
                 ec = e.code();
             }
-            boost::asio::asio_handler_invoke(std::bind(handler, ec, args), &handler);
+            boost::asio::asio_handler_invoke(std::bind(handler, ec), &handler);
         });
         return completion.result.get();
     }
-    template<class CompletionToken>
-    auto async_receive(id_type registration_or_subscription_id, CompletionToken&& token)
-    {
-        response_completion completion(token);
-        pending_requests_.insert({registration_or_subscription_id, completion.handler});
-        listen();
-        return completion.result.get();
-    }
+
 private:
     using variant_type = typename Serializer::variant_type;
     using array = std::vector<variant_type>;
@@ -351,6 +353,15 @@ private:
     boost::asio::io_service::strand strand_;
     std::shared_ptr<void_completion> comp_;
     bool is_alive_ = true;
+
+    template<class CompletionToken>
+    auto async_receive(id_type registration_or_subscription_id, CompletionToken&& token)
+    {
+        response_completion completion(token);
+        pending_requests_.insert({registration_or_subscription_id, completion.handler});
+        listen();
+        return completion.result.get();
+    }
     template<class Message, class CompletionToken>
     auto async_send_receive(id_type requestId, Message&& msg, CompletionToken&& token)
     {
@@ -400,10 +411,12 @@ private:
                     auto handler = iter->second;
                     pending_requests_.erase(iter);
                     boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
+                    return;
                 }
                 else if(code == WampMsgCode::SUBSCRIBED || code == WampMsgCode::WAMP_REGISTERED
                         || code == WampMsgCode::UNREGISTERED || code == WampMsgCode::PUBLISHED
-                        || code == WampMsgCode::UNSUBSCRIBED || code == WampMsgCode::EVENT)
+                        || code == WampMsgCode::UNSUBSCRIBED || code == WampMsgCode::EVENT
+                        || code == WampMsgCode::RESULT)
                 {
                     requestId = adapters::as<id_type>(arr[1]);
                     auto it = pending_requests_.find(requestId);
@@ -413,14 +426,35 @@ private:
                         pending_requests_.erase(it);
                         boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
                     }
+                    return;
+                }
+                else if(code == WampMsgCode::INVOCATION)
+                {
+                    requestId = adapters::as<id_type>(arr[2]);
+                    auto it = pending_requests_.find(requestId);
+                    if(it != pending_requests_.end())
+                    {
+                        auto handler = it->second;
+                        pending_requests_.erase(it);
+                        boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
+                    }
+                    return;
                 }
                 //listen();
                 //}
             }
-            catch(boost::system::system_error& e)
+            catch(const std::exception& e)
             {
                 auto message = e.what();
                 std::cout << message << "\n\n";
+                boost::system::error_code ec = make_error_code(wamp_errors::error);
+                for(auto pair: pending_requests_)
+                {
+                    auto handler = pair.second;
+                    array arr;
+                    boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
+                }
+                pending_requests_.clear();
             }
             int t=0;
         });
@@ -434,13 +468,13 @@ struct protocol
     {
     }
     template<class Body, class Fields>
-    void operator()(beast::http::message<true, Body, Fields>& req)
+    void operator()(beast::http::message<true, Body, Fields>& req) const
     {
         req.fields.insert("Sec-WebSocket-Protocol", str);
     }
 
     template<class Body, class Fields>
-    void operator()(beast::http::message<false, Body, Fields>& res)
+    void operator()(beast::http::message<false, Body, Fields>& resp) const
     {
     }
 };
