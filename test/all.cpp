@@ -75,15 +75,29 @@ int main()
                 wamp2.async_publish("test.ev", false, yield, "ahoj");
                 auto ev = wamp.async_receive_event<std::tuple<std::string>>(sub_id, yield);
                 qflow::id_type reg_id = wamp.async_register("test.add", yield);
+                qflow::id_type reg_id2 = wamp.async_register("test.add2", yield);
                 boost::asio::spawn(io_service,
-                           [&](boost::asio::yield_context yield2)
+                           [&](boost::asio::yield_context yield)
                 {
                     wamp.async_handle_invocation(reg_id, [](int a, int b){
                         return a + b;
-                    }, yield2);
+                    }, yield);
                     int t=0;
                 });
                 auto res = wamp2.async_call_complete<std::tuple<int>>("test.add", yield, 1, 2);
+                
+                
+                boost::asio::spawn(io_service,
+                           [&](boost::asio::yield_context yield)
+                {
+                    std::tuple<int, int> params;
+                    auto call_id = wamp.async_receive_invocation(reg_id2, params, yield);
+                    wamp.async_yield<true>(call_id, std::make_tuple(9), yield);
+                    wamp.async_yield<true>(call_id, std::make_tuple(10), yield);
+                });
+                auto call_id = wamp2.async_call<true>("test.add2", yield, 1, 2);
+                auto partial1 = wamp2.async_receive_result<std::tuple<int>>(call_id, yield);
+                auto partial2 = wamp2.async_receive_result<std::tuple<int>>(call_id, yield);
                 int t=0;
 
             }

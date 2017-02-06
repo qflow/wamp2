@@ -16,7 +16,8 @@
 #include "json_serializer.h"
 #include "msgpack_serializer.h"
 #include "symbols.h"
-#include "util/functor.h"
+#include "util/function_traits.h"
+#include "util/apply.h"
 
 namespace qflow {
 
@@ -78,6 +79,38 @@ boost::system::error_code make_error_code(const std::string& str)
     std::cout << "Unhandled wamp error: " + str;
     return make_error_code(wamp_errors::error);
 }
+template<bool progress>
+struct call_msg_options
+{
+    auto operator ()()
+    {
+        return empty();
+    }
+};
+template<>
+struct call_msg_options<true>
+{
+    auto operator ()()
+    {
+        return std::make_tuple(std::make_pair("receive_progress", true));
+    }
+};
+template<bool progress>
+struct yield_msg_options
+{
+    auto operator ()()
+    {
+        return empty();
+    }
+};
+template<>
+struct yield_msg_options<true>
+{
+    auto operator ()()
+    {
+        return std::make_tuple(std::make_pair("progress", true));
+    }
+};
 
 template<typename NextStream, typename Serializer>
 class wamp_stream
@@ -101,8 +134,8 @@ public:
         {
             boost::system::error_code ec;
             try {
-                auto roles = std::make_tuple(std::make_pair("caller", empty()), std::make_pair("subscriber", empty()),
-                                             std::make_pair("callee", empty()), std::make_pair("publisher", empty()));
+                auto roles = std::make_tuple(std::make_pair("caller", std::make_tuple(std::make_pair("progressive_call_results", true))), std::make_pair("subscriber", empty()),
+                                             std::make_pair("callee", std::make_tuple(std::make_pair("progressive_call_results", true))), std::make_pair("publisher", empty()));
                 auto details = std::make_tuple(std::make_pair("roles", roles));
                 auto msg = std::make_tuple(WampMsgCode::HELLO, realm, details);
                 Serializer s;
@@ -127,13 +160,15 @@ public:
         });
         return completion.result.get();
     }
-    template<class CompletionToken, typename... Args>
+
+
+    template<bool isProgress, class CompletionToken, typename... Args>
     auto async_call(const std::string& uri, CompletionToken&& token, Args... args)
     {
         beast::async_completion<CompletionToken, void(boost::system::error_code, id_type)> completion(token);
         auto argsTuple = std::make_tuple(args...);
         id_type requestId = random::generate();
-        auto options = std::make_tuple(std::make_pair("receive_progress", true));
+        auto options = call_msg_options<isProgress>()();
         auto msg = std::make_tuple(WampMsgCode::CALL, requestId, options, uri, argsTuple);
         boost::asio::spawn(next_.get_io_service(),
                            [this, requestId, msg, handler = completion.handler](boost::asio::yield_context yield)
@@ -181,17 +216,14 @@ public:
     auto async_call_complete(const std::string& uri, CompletionToken&& token, Args... args)
     {
         beast::async_completion<CompletionToken, void(boost::system::error_code, Result)> completion(token);
-        auto argsTuple = std::make_tuple(args...);
-        id_type requestId = random::generate();
-        auto msg = std::make_tuple(WampMsgCode::CALL, requestId, empty(), uri, argsTuple);
         boost::asio::spawn(next_.get_io_service(),
-                           [this, requestId, msg, handler = completion.handler](boost::asio::yield_context yield)
+                           [this, uri, handler = completion.handler, args...](boost::asio::yield_context yield)
         {
             boost::system::error_code ec;
             Result res;
             try {
-                auto outmsg = async_send_receive(requestId, msg, yield);
-                res = adapters::as<Result>(outmsg[3]);
+                auto call_id = async_call<false>(uri, yield, args...);
+                res = async_receive_result<Result>(call_id, yield);
 
             }
             catch (boost::system::system_error& e)
@@ -359,6 +391,53 @@ public:
         });
         return completion.result.get();
     }
+    template<class Params, class CompletionToken>
+    auto async_receive_invocation(id_type registration_id, Params& params, CompletionToken&& token)
+    {
+        beast::async_completion<CompletionToken, void(boost::system::error_code, id_type)> completion(std::forward<CompletionToken>(token));
+        boost::asio::spawn(next_.get_io_service(),
+                           [this, registration_id, &params, handler = completion.handler](boost::asio::yield_context yield)
+        {
+            boost::system::error_code ec;
+            id_type requestId;
+            try {
+                auto msg = async_receive(registration_id, yield);
+                requestId = adapters::as<id_type>(msg[1]);
+                auto arr = msg[4];
+                auto vec = adapters::as<std::vector<variant_type>>(arr);
+                params = adapters::as<Params>(vec);
+            }
+            catch (boost::system::system_error& e)
+            {
+                ec = e.code();
+            }
+            boost::asio::asio_handler_invoke(std::bind(handler, ec, requestId), &handler);
+        });
+        return completion.result.get();
+    }
+    template<bool isProgress, class Result, class CompletionToken>
+    auto async_yield(id_type call_id, Result result, CompletionToken&& token)
+    {
+        beast::async_completion<CompletionToken, void(boost::system::error_code)> completion(std::forward<CompletionToken>(token));
+        auto options = yield_msg_options<isProgress>()();
+        auto outmsg = std::make_tuple(WampMsgCode::YIELD, call_id, options, result);
+        boost::asio::spawn(next_.get_io_service(),
+                           [this, outmsg, handler = completion.handler](boost::asio::yield_context yield)
+        {
+            boost::system::error_code ec;
+            try {
+                Serializer s;
+                std::string str = s.serialize(outmsg);
+                next_.async_write(boost::asio::buffer(str), yield);
+            }
+            catch (boost::system::system_error& e)
+            {
+                ec = e.code();
+            }
+            boost::asio::asio_handler_invoke(std::bind(handler, ec), &handler);
+        });
+        return completion.result.get();
+    }
     template<class Callable, class CompletionToken>
     auto async_handle_invocation(id_type registration_id, Callable&& func, CompletionToken&& token)
     {
@@ -368,18 +447,11 @@ public:
         {
             boost::system::error_code ec;
             try {
-                auto msg = async_receive(registration_id, yield);
-                id_type requestId = adapters::as<id_type>(msg[1]);
-                auto arr = msg[4];
-                auto vec = adapters::as<std::vector<variant_type>>(arr);
-                functor_impl<variant_type, Callable> functor(std::forward<Callable>(func));
-                auto res = functor.invoke(vec);
-                auto outmsg = std::make_tuple(WampMsgCode::YIELD, requestId, empty(), std::make_tuple(res));
-                Serializer s;
-                std::string str = s.serialize(outmsg);
-                std::cout << str;
-                next_.async_write(boost::asio::buffer(str), yield);
-                int y=0;
+                using params_type = typename function_traits<Callable>::args;
+                params_type params;
+                auto call_id = async_receive_invocation(registration_id, params, yield);
+                auto res = ::apply(params, func);
+                async_yield<false>(call_id, std::make_tuple(res), yield);
             }
             catch (boost::system::system_error& e)
             {

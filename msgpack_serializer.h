@@ -287,6 +287,14 @@ struct adapter<std::tuple<T...>, std::vector<msgpack::object>>
     }
 };
 template<>
+struct adapter<std::vector<msgpack::object>, std::vector<msgpack::object>>
+{
+    static std::vector<msgpack::object> convert(std::vector<msgpack::object> v)
+    {
+        return v;
+    }
+};
+template<>
 struct adapter<any, std::shared_ptr<msgpack::object_handle>>
 {
     static any convert(std::shared_ptr<msgpack::object_handle> p)
