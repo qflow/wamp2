@@ -18,9 +18,9 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include "proxy_config.pb.h"
 
-namespace qflow {
 using req_type = beast::http::request<beast::http::string_body>;
 using resp_type = beast::http::response<beast::http::string_body>;
+namespace qflow {
 
 class http_session : public std::enable_shared_from_this<http_session>
 {

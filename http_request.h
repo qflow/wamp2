@@ -8,8 +8,8 @@
 #include <beast/http.hpp>
 #include <beast/core/async_completion.hpp>
 
-namespace qflow{
 using tcp = boost::asio::ip::tcp;
+namespace qflow{
 
 template<class CompletionToken, class RequestType>
 auto async_send_request(const std::string& url_str, const RequestType& req,
