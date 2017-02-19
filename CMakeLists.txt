@@ -78,7 +78,7 @@ ExternalProject_Add(
       UPDATE_COMMAND ""
       PATCH_COMMAND ""
       TEST_COMMAND ""
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=install
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=install -DBUILD_TESTING=OFF
     )
 set(CRYPTOPP_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/cryptopp/src/cryptopp-build/install/include)
 set(CRYPTOPP_LIB_DIRS ${PROJECT_BINARY_DIR}/cryptopp/src/cryptopp-build/install/lib)
