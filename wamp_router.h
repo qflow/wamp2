@@ -391,6 +391,27 @@ public:
         });
         return completion.result.get();
     }
+    template<class CompletionToken>
+    auto async_receive_invocation(id_type registration_id, CompletionToken&& token)
+    {
+        beast::async_completion<CompletionToken, void(boost::system::error_code, id_type)> completion(std::forward<CompletionToken>(token));
+        boost::asio::spawn(next_.get_io_service(),
+                           [this, registration_id, handler = completion.handler](boost::asio::yield_context yield)
+        {
+            boost::system::error_code ec;
+            id_type requestId;
+            try {
+                auto msg = async_receive(registration_id, yield);
+                requestId = adapters::as<id_type>(msg[1]);
+            }
+            catch (boost::system::system_error& e)
+            {
+                ec = e.code();
+            }
+            boost::asio::asio_handler_invoke(std::bind(handler, ec, requestId), &handler);
+        });
+        return completion.result.get();
+    }
     template<class Params, class CompletionToken>
     auto async_receive_invocation(id_type registration_id, Params& params, CompletionToken&& token)
     {
