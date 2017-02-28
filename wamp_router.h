@@ -151,6 +151,7 @@ public:
                 WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
                 if(code != WampMsgCode::WELCOME)
                     ec = make_error_code(wamp_errors::error);
+                else listen();
             }
             catch (boost::system::system_error& e)
             {
@@ -342,7 +343,7 @@ public:
         std::map<std::string, bool> options;
         if(ack) options["acknowledge"] = true;
         auto msg = std::make_tuple(WampMsgCode::PUBLISH, requestId, options, uri, argsTuple);
-        boost::asio::spawn(next_.get_io_service(),
+        boost::asio::spawn(strand_,
                            [this, ack, requestId, msg, handler = completion.handler](boost::asio::yield_context yield)
         {
             boost::system::error_code ec;
@@ -495,13 +496,35 @@ private:
     boost::asio::io_service::strand strand_;
     std::shared_ptr<void_completion> comp_;
     bool is_alive_ = true;
+    std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
+
+    /*template<class ConstBufferSequence, class CompletionToken>
+    auto async_write_safe(const ConstBufferSequence& buffers, CompletionToken&& token)
+    {
+        beast::async_completion<CompletionToken, void(boost::system::error_code)> completion(std::forward<CompletionToken>(token));
+        boost::asio::spawn(strand_,
+                           [this, buffers, handler = completion.handler](boost::asio::yield_context yield)
+        {
+            boost::system::error_code ec;
+            while (lock_.test_and_set(std::memory_order_acquire));
+            try {
+                next_.async_write(buffers, yield);
+            }
+            catch (boost::system::system_error& e)
+            {
+                ec = e.code();
+            }
+            boost::asio::asio_handler_invoke(std::bind(handler, ec), &handler);
+            lock_.clear();
+        });
+        return completion.result.get();
+    }*/
 
     template<class CompletionToken>
     auto async_receive(id_type registration_or_subscription_id, CompletionToken&& token)
     {
         response_completion completion(token);
         pending_requests_.insert({registration_or_subscription_id, completion.handler});
-        listen();
         return completion.result.get();
     }
     template<class Message, class CompletionToken>
@@ -511,12 +534,11 @@ private:
         std::string str = s.serialize(msg);
         response_completion completion(token);
         pending_requests_.insert({requestId, completion.handler});
-        boost::asio::spawn(token,
+        boost::asio::spawn(strand_,
                            [this, str](boost::asio::yield_context yield)
         {
             try {
                 next_.async_write(boost::asio::buffer(str), yield);
-                listen();
             }
             catch(boost::system::system_error& e)
             {
@@ -532,58 +554,56 @@ private:
                            [this](boost::asio::yield_context yield)
         {
             try {
-                //while(is_alive_){
-                Serializer s;
-                beast::streambuf sb;
-                beast::websocket::opcode op;
-                int i=0;
-                next_.async_read(op, sb, yield);
-                auto m = s.deserialize(beast::to_string(sb.data()));
-                using map = std::unordered_map<std::string, variant_type>;
-                array arr = adapters::as<array>(m);
-                WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
-                id_type requestId = 0;
-                boost::system::error_code ec;
-                if(code == WampMsgCode::WAMP_ERROR)
+                while(is_alive_)
                 {
-                    requestId = adapters::as<id_type>(arr[2]);
-                    std::string error_uri = adapters::as<std::string>(arr[4]);
-                    ec = make_error_code(error_uri);
-                    auto iter = pending_requests_.find(requestId);
-                    auto handler = iter->second;
-                    pending_requests_.erase(iter);
-                    boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
-                    return;
-                }
-                else if(code == WampMsgCode::SUBSCRIBED || code == WampMsgCode::WAMP_REGISTERED
-                        || code == WampMsgCode::UNREGISTERED || code == WampMsgCode::PUBLISHED
-                        || code == WampMsgCode::UNSUBSCRIBED || code == WampMsgCode::EVENT
-                        || code == WampMsgCode::RESULT)
-                {
-                    requestId = adapters::as<id_type>(arr[1]);
-                    auto it = pending_requests_.find(requestId);
-                    if(it != pending_requests_.end())
+                    //while(is_alive_){
+                    Serializer s;
+                    beast::streambuf sb;
+                    beast::websocket::opcode op;
+                    int i=0;
+                    next_.async_read(op, sb, yield);
+                    auto m = s.deserialize(beast::to_string(sb.data()));
+                    using map = std::unordered_map<std::string, variant_type>;
+                    array arr = adapters::as<array>(m);
+                    WampMsgCode code = adapters::as<WampMsgCode>(arr[0]);
+                    id_type requestId = 0;
+                    boost::system::error_code ec;
+                    if(code == WampMsgCode::WAMP_ERROR)
                     {
-                        auto handler = it->second;
-                        pending_requests_.erase(it);
+                        requestId = adapters::as<id_type>(arr[2]);
+                        std::string error_uri = adapters::as<std::string>(arr[4]);
+                        ec = make_error_code(error_uri);
+                        auto iter = pending_requests_.find(requestId);
+                        auto handler = iter->second;
+                        pending_requests_.erase(iter);
                         boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
                     }
-                    return;
-                }
-                else if(code == WampMsgCode::INVOCATION)
-                {
-                    requestId = adapters::as<id_type>(arr[2]);
-                    auto it = pending_requests_.find(requestId);
-                    if(it != pending_requests_.end())
+                    else if(code == WampMsgCode::SUBSCRIBED || code == WampMsgCode::WAMP_REGISTERED
+                            || code == WampMsgCode::UNREGISTERED || code == WampMsgCode::PUBLISHED
+                            || code == WampMsgCode::UNSUBSCRIBED || code == WampMsgCode::EVENT
+                            || code == WampMsgCode::RESULT)
                     {
-                        auto handler = it->second;
-                        pending_requests_.erase(it);
-                        boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
+                        requestId = adapters::as<id_type>(arr[1]);
+                        auto it = pending_requests_.find(requestId);
+                        if(it != pending_requests_.end())
+                        {
+                            auto handler = it->second;
+                            pending_requests_.erase(it);
+                            boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
+                        }
                     }
-                    return;
+                    else if(code == WampMsgCode::INVOCATION)
+                    {
+                        requestId = adapters::as<id_type>(arr[2]);
+                        auto it = pending_requests_.find(requestId);
+                        if(it != pending_requests_.end())
+                        {
+                            auto handler = it->second;
+                            pending_requests_.erase(it);
+                            boost::asio::asio_handler_invoke(std::bind(handler, ec, std::move(arr)), &handler);
+                        }
+                    }
                 }
-                //listen();
-                //}
             }
             catch(const std::exception& e)
             {
