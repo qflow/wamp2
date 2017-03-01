@@ -343,7 +343,7 @@ public:
         std::map<std::string, bool> options;
         if(ack) options["acknowledge"] = true;
         auto msg = std::make_tuple(WampMsgCode::PUBLISH, requestId, options, uri, argsTuple);
-        boost::asio::spawn(strand_,
+        boost::asio::spawn(token,
                            [this, ack, requestId, msg, handler = completion.handler](boost::asio::yield_context yield)
         {
             boost::system::error_code ec;
@@ -358,7 +358,7 @@ public:
                 {
                     Serializer s;
                     std::string str = s.serialize(msg);
-                    next_.async_write(boost::asio::buffer(str), yield);
+                    async_write_safe(boost::asio::buffer(str), yield);
                 }
             }
             catch (boost::system::system_error& e)
@@ -498,11 +498,11 @@ private:
     bool is_alive_ = true;
     std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 
-    /*template<class ConstBufferSequence, class CompletionToken>
+    template<class ConstBufferSequence, class CompletionToken>
     auto async_write_safe(const ConstBufferSequence& buffers, CompletionToken&& token)
     {
         beast::async_completion<CompletionToken, void(boost::system::error_code)> completion(std::forward<CompletionToken>(token));
-        boost::asio::spawn(strand_,
+        boost::asio::spawn(token,
                            [this, buffers, handler = completion.handler](boost::asio::yield_context yield)
         {
             boost::system::error_code ec;
@@ -514,11 +514,12 @@ private:
             {
                 ec = e.code();
             }
-            boost::asio::asio_handler_invoke(std::bind(handler, ec), &handler);
             lock_.clear();
+            boost::asio::asio_handler_invoke(std::bind(handler, ec), &handler);
+            
         });
         return completion.result.get();
-    }*/
+    }
 
     template<class CompletionToken>
     auto async_receive(id_type registration_or_subscription_id, CompletionToken&& token)
