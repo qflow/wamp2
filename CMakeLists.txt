@@ -44,7 +44,7 @@ set(ASIO_INCLUDE_DIRS ${PROJECT_BINARY_DIR}/asio/src/asio/asio/include)
 ExternalProject_Add(
       beast
       GIT_REPOSITORY "https://github.com/vinniefalco/Beast.git"
-      GIT_TAG "master"
+      GIT_TAG "http"
       PREFIX beast
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""

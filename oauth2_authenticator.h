@@ -5,6 +5,7 @@
 #include <boost/asio.hpp>
 #include <boost/asio/connect.hpp>
 #include <beast/core/streambuf.hpp>
+#include <beast/http.hpp>
 #include <nlohmann/json.hpp>
 
 using namespace nlohmann;
@@ -82,7 +83,7 @@ auto async_oauth2_authenticate(const RequestType& req,
             {
                 std::string redirect_uri = "http://" + host + new_req.url;
                 std::string redirect_uri_encoded = uri::url_encode(redirect_uri);
-                beast::http::response<beast::http::empty_body> res;
+                beast::http::response<beast::http::string_body> res;
                 res.version = new_req.version;
                 res.status = 303;
                 res.fields.insert("Server", "http_async_server");
@@ -103,7 +104,7 @@ auto async_oauth2_authenticate(const RequestType& req,
                 std::string redirect_uri_encoded = uri::url_encode(redirect_uri);
                 std::string vurl_str = "https://graph.facebook.com/v2.8/oauth/access_token?client_id=1067375046723087&redirect_uri=http://" + host + new_req.url + "&client_secret=8be865cb794eb995acf8b01443116a3e&code=" + url.query_item_value("code");
 
-                beast::http::request<beast::http::empty_body> token_req;
+                beast::http::request<beast::http::string_body> token_req;
                 token_req.method = "GET";
                 token_req.version = 11;
 
