@@ -3,7 +3,7 @@
 #include "msgpack_serializer.h"
 #include "websocket_transport.h"
 #include "router.h"
-#include "http_server.h"
+#include "tcp_server.h"
 #include "translate.h"
 #include "wamp_router.h"
 

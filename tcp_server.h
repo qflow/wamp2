@@ -1,5 +1,5 @@
-#ifndef HTTP_SERVER_H
-#define HTTP_SERVER_H
+#ifndef TCP_SERVER_H
+#define TCP_SERVER_H
 
 #include "future_handler.h"
 
