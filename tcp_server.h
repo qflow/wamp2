@@ -67,7 +67,7 @@ public:
                 auto a = parser.get();
                 beast::http::async_write(socket_, a, yield);
                 std::cout << a;*/
-                
+
             }
             catch (boost::system::system_error& e)
             {
@@ -102,7 +102,7 @@ public:
             acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
             for (;;)
             {
-                boost::system::error_code ec;   
+                boost::system::error_code ec;
                 tcp::socket socket(io_service_);
                 acceptor.async_accept(socket, yield[ec]);
                 if (!ec) std::make_shared<session>(std::move(socket))->operator()(args...);
