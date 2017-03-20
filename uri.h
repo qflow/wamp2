@@ -102,6 +102,10 @@ public:
     {
         return !scheme_.empty() && !host_.empty();
     }
+    std::string path_item_at(int pos) const
+    {
+        return path_items[pos];
+    }
     static std::string url_encode(const std::string &value) {
         std::ostringstream escaped;
         escaped.fill('0');
